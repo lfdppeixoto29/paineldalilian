@@ -97,10 +97,18 @@ app.get('/', (req, res) => {
 
         const query = `
             SELECT a.id as aluno_id, a.nome, a.matricula, a.telefone, a.responsavel,
-                   n.id as nota_id, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+                   n.id as nota_id, n.trimestre, 
+                   MAX(n.avaliacao1) as avaliacao1, 
+                   MAX(n.avaliacao2) as avaliacao2, 
+                   MAX(n.trabalho1) as trabalho1, 
+                   MAX(n.trabalho2) as trabalho2, 
+                   MAX(n.trabalho3) as trabalho3, 
+                   MAX(n.participacao) as participacao, 
+                   MAX(n.faltas) as faltas
             FROM alunos a
             LEFT JOIN notas n ON a.id = n.aluno_id AND n.materia = ? AND n.trimestre = ?
             WHERE a.turma = ? AND a.ano_letivo = ?
+            GROUP BY a.id
             ORDER BY a.nome ASC
         `;
 
