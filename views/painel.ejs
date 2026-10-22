@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Professor - Colégio Estadual Euclides Feliciano Tardin</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f4f8; color: #333; -webkit-text-size-adjust: 100%; }
+        
+        header { background: #1e3c72; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        header h1 { font-size: 18px; }
+        header p { font-size: 12px; opacity: 0.9; }
+        
+        .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+        .nav-links a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 500; }
+        .nav-links a:hover { background: rgba(255,255,255,0.3); }
+        
+        .container { max-width: 1400px; margin: 15px auto; padding: 0 10px; }
+        
+        .filtros-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #1e3c72; margin-bottom: 4px; }
+        .form-group select, .form-group input { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; width: 100%; }
+        
+        .btn { padding: 8px 14px; background: #1e3c72; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.3s; font-size: 13px; text-align: center; }
+        .btn:hover { background: #2a5298; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #d9534f; }
+        .btn-danger:hover { background: #c9302c; }
+        .btn-whatsapp { background: #25d366; color: white; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap; }
+        
+        .sucesso { background: #d4edda; color: #155724; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; border: 1px solid #c3e6cb; }
+        
+        .mgmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        @media(max-width: 768px) { .mgmt-grid { grid-template-columns: 1fr; } }
+        
+        .mgmt-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .mgmt-card h3 { color: #1e3c72; font-size: 14px; margin-bottom: 8px; }
+        .mgmt-card form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .mgmt-card input { flex: 1; min-width: 120px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+
+        .tabela-card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .tabela-cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .tabela-cabecalho h2 { color: #1e3c72; font-size: 16px; }
+        
+        /* Responsividade para Celulares na Tabela */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e1e8ed; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; white-space: nowrap; }
+        th, td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #ddd; font-size: 13px; }
+        th { background: #1e3c72; color: white; position: sticky; top: 0; z-index: 10; }
+        td:nth-child(2) { text-align: left; font-weight: 500; }
+        
+        input.nota-input { width: 50px; padding: 6px; text-align: center; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; display: inline-block; }
+        .badge-aprovado { background: #d4edda; color: #155724; }
+        .badge-reprovado { background: #f8d7da; color: #721c24; }
+        
+        .legenda { font-size: 12px; color: #555; background: #eef2f7; padding: 10px; border-radius: 6px; margin-bottom: 15px; line-height: 1.4; }
+        
+        .actions-top { display: flex; gap: 8px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Colégio Estadual Euclides F. Tardin</h1>
+            <p>Professora Lilian | Ano: <%= anoLetivo %></p>
+        </div>
+        <div class="nav-links">
+            <a href="/?ano=<%= anoLetivo %>">Notas</a>
+            <a href="/relatorios?ano=<%= anoLetivo %>">📊 Relatórios</a>
+            <a href="/import-export">📂 Anos/Importar</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <% if (typeof sucesso !== 'undefined' && sucesso) { %>
+            <div class="sucesso"><%= sucesso %></div>
+        <% } %>
+
+        <div class="mgmt-grid">
+            <div class="mgmt-card">
+                <h3>🏫 Incluir Turma (<%= anoLetivo %>)</h3>
+                <form action="/turmas/adicionar" method="POST">
+                    <input type="hidden" name="ano_letivo" value="<%= anoLetivo %>">
+                    <input type="text" name="nome_turma" required placeholder="Ex: 904 ou 2002 EMTI">
+                    <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 12px;">+ Criar</button>
+                </form>
+            </div>
+            <div class="mgmt-card">
+                <h3>🗑️ Excluir Turma Atual</h3>
+                <form action="/turmas/excluir" method="POST" onsubmit="return confirm('Deseja excluir a turma <%= turmaSelecionada %> no ano <%= anoLetivo %>?');">
+                    <input type="hidden" name="ano_letivo" value="<%= anoLetivo %>">
+                    <input type="hidden" name="turma_remover" value="<%= turmaSelecionada %>">
+                    <span style="font-size: 12px; color: #555; flex: 1; overflow: hidden; text-overflow: ellipsis;"><b><%= turmaSelecionada %></b></span>
+                    <button type="submit" class="btn btn-danger" style="padding: 8px 12px; font-size: 12px;">Excluir</button>
+                </form>
+            </div>
+        </div>
+
+        <form action="/" method="GET" class="filtros-card">
+            <div class="form-group">
+                <label>Ano Letivo</label>
+                <select name="ano" onchange="this.form.submit()">
+                    <% anos.forEach(a => { %>
+                        <option value="<%= a %>" <%= a === anoLetivo ? 'selected' : '' %>><%= a %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Turma</label>
+                <select name="turma" onchange="this.form.submit()">
+                    <% turmas.forEach(t => { %>
+                        <option value="<%= t %>" <%= t === turmaSelecionada ? 'selected' : '' %>><%= t %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Matéria</label>
+                <select name="materia" onchange="this.form.submit()">
+                    <% materias.forEach(m => { %>
+                        <option value="<%= m %>" <%= m === materiaSelecionada ? 'selected' : '' %>><%= m %></option>
+                    <% }) %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Período</label>
+                <select name="trimestre" onchange="this.form.submit()">
+                    <option value="1" <%= trimestreSelecionado === '1' ? 'selected' : '' %>>1º Trim</option>
+                    <option value="2" <%= trimestreSelecionado === '2' ? 'selected' : '' %>>2º Trim</option>
+                    <option value="3" <%= trimestreSelecionado === '3' ? 'selected' : '' %>>3º Trim</option>
+                </select>
+            </div>
+        </form>
+
+        <div class="legenda">
+            <b>Critérios:</b> • <b>Av. 1 & 2:</b> Predomina a maior | • <b>Trabalhos:</b> Até 2 pts | • <b>Participação:</b> Até 1 pt | • <b>Aprovação:</b> Média >= 5.0. <i>Dica: arraste a tabela para o lado no celular para ver todas as colunas.</i>
+        </div>
+
+        <form action="/atualizar-notas" method="POST">
+            <input type="hidden" name="turma" value="<%= turmaSelecionada %>">
+            <input type="hidden" name="materia" value="<%= materiaSelecionada %>">
+            <input type="hidden" name="trimestre" value="<%= trimestreSelecionado %>">
+            <input type="hidden" name="ano" value="<%= anoLetivo %>">
+
+            <div class="tabela-card">
+                <div class="tabela-cabecalho">
+                    <h2>Turma: <%= turmaSelecionada %> | <%= materiaSelecionada %> (<%= trimestreSelecionado %>ºT)</h2>
+                    <div class="actions-top">
+                        <a href="/exportar/excel?ano=<%= anoLetivo %>&turma=<%= encodeURIComponent(turmaSelecionada) %>&materia=<%= encodeURIComponent(materiaSelecionada) %>&trimestre=<%= trimestreSelecionado %>" class="btn" style="background: #17a2b8; text-decoration: none; padding: 8px 12px; font-size: 12px;">📥 Excel</a>
+                        <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 12px;">💾 Salvar</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Matrícula</th>
+                                <th>Nome do Aluno</th>
+                                <th>Av. 1</th>
+                                <th>Av. 2</th>
+                                <th>Maior</th>
+                                <th>Trabalho 1</th>
+                                <th>Trabalho 2</th>
+                                <th>Trabalho 3</th>
+                                <th>Participação</th>
+                                <th>Faltas</th>
+                                <th>Nota Final</th>
+                                <th>Status</th>
+                                <th>Gráficos</th>
+                                <th>Excluir</th>
+                                <th>WhatsApp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (registros.length === 0) { %>
+                                <tr><td colspan="15" style="text-align: center; padding: 25px; color: #666;">Nenhum aluno cadastrado nesta turma para o ano de <%= anoLetivo %>.</td></tr>
+                            <% } else { %>
+                                <% registros.forEach((reg, index) => { 
+                                    const av1 = reg.avaliacao1 || 0;
+                                    const av2 = reg.avaliacao2 || 0;
+                                    const maiorAv = Math.max(av1, av2);
+                                    const t1 = reg.trabalho1 || 0;
+                                    const t2 = reg.trabalho2 || 0;
+                                    const t3 = reg.trabalho3 || 0;
+                                    const pt = reg.participacao || 0;
+                                    
+                                    const notaFinal = Math.min(10, maiorAv + t1 + t2 + t3 + pt).toFixed(1);
+                                    const aprovado = notaFinal >= 5.0;
+                                %>
+                                    <tr>
+                                        <td><%= reg.matricula %></td>
+                                        <td>
+                                            <%= reg.nome %>
+                                            <input type="hidden" name="aluno_id" value="<%= reg.aluno_id %>">
+                                        </td>
+                                        <td><input type="number" step="0.1" min="0" max="10" name="avaliacao1" value="<%= av1 %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><input type="number" step="0.1" min="0" max="10" name="avaliacao2" value="<%= av2 %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><b class="lbl-maior" style="color: #1e3c72;"><%= maiorAv.toFixed(1) %></b></td>
+                                        <td><input type="number" step="0.1" min="0" max="2" name="trabalho1" value="<%= t1 %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><input type="number" step="0.1" min="0" max="2" name="trabalho2" value="<%= t2 %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><input type="number" step="0.1" min="0" max="2" name="trabalho3" value="<%= t3 %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><input type="number" step="0.1" min="0" max="1" name="participacao" value="<%= pt %>" class="nota-input" oninput="calcularNota(this)"></td>
+                                        <td><input type="number" min="0" name="faltas" value="<%= reg.faltas || 0 %>" style="width: 45px; padding: 6px; text-align: center;"></td>
+                                        <td><b class="lbl-final"><%= notaFinal %></b></td>
+                                        <td>
+                                            <span class="badge <%= aprovado ? 'badge-aprovado' : 'badge-reprovado' %> lbl-status">
+                                                <%= aprovado ? 'APROVADO' : 'REPROVADO' %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="/aluno/<%= reg.aluno_id %>" class="btn" style="background: #6f42c1; text-decoration: none; padding: 5px 8px; font-size: 11px;">📊 Ver</a>
+                                        </td>
+                                        <td>
+                                            <form action="/aluno/excluir" method="POST" onsubmit="return confirm('Excluir <%= reg.nome %>?');" style="display:inline;">
+                                                <input type="hidden" name="aluno_id" value="<%= reg.aluno_id %>">
+                                                <input type="hidden" name="turma" value="<%= turmaSelecionada %>">
+                                                <input type="hidden" name="ano" value="<%= anoLetivo %>">
+                                                <button type="submit" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;">🗑️</button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <% if (reg.telefone) { 
+                                                const msg = encodeURIComponent(`Boletim de ${reg.nome} (${materiaSelecionada} - ${trimestreSelecionado}ºT): Nota Final: ${notaFinal}. Status: ${aprovado ? 'Aprovado' : 'Reprovado'}. Colégio Euclides Feliciano Tardin.`);
+                                            %>
+                                                <a href="https://wa.me/55<%= reg.telefone.replace(/\D/g,'') %>?text=<%= msg %>" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>
+                                            <% } else { %>
+                                                -
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function calcularNota(input) {
+            const tr = input.closest('tr');
+            const inputs = tr.querySelectorAll('.nota-input');
+            const av1 = parseFloat(inputs[0].value) || 0;
+            const av2 = parseFloat(inputs[1].value) || 0;
+            const maiorAv = Math.max(av1, av2);
+
+            const t1 = parseFloat(inputs[2].value) || 0;
+            const t2 = parseFloat(inputs[3].value) || 0;
+            const t3 = parseFloat(inputs[4].value) || 0;
+            const pt = parseFloat(inputs[5].value) || 0;
+
+            const lblMaior = tr.querySelector('.lbl-maior');
+            lblMaior.textContent = maiorAv.toFixed(1);
+
+            const final = Math.min(10, maiorAv + t1 + t2 + t3 + pt).toFixed(1);
+            const lblFinal = tr.querySelector('.lbl-final');
+            const lblStatus = tr.querySelector('.lbl-status');
+
+            lblFinal.textContent = final;
+
+            if (final >= 5.0) {
+                lblStatus.textContent = 'APROVADO';
+                lblStatus.className = 'badge badge-aprovado lbl-status';
+            } else {
+                lblStatus.textContent = 'REPROVADO';
+                lblStatus.className = 'badge badge-reprovado lbl-status';
+            }
+        }
+    </script>
+</body>
+</html>

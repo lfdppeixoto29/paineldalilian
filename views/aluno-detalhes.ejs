@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang=\"pt-BR\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>Histórico e Gráfico do Aluno - Colégio Estadual Euclides Feliciano Tardin</title>
+    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f4f8; color: #222; -webkit-text-size-adjust: 100%; }
+        header { background: #1e3c72; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        header h1 { font-size: 18px; }
+        header p { font-size: 12px; opacity: 0.9; }
+        header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+        header a:hover { background: rgba(255,255,255,0.3); }
+        .container { max-width: 1100px; margin: 20px auto; padding: 0 10px; }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card h2 { color: #1e3c72; margin-bottom: 15px; font-size: 16px; border-bottom: 2px solid #eef2f7; padding-bottom: 8px; font-weight: 700; }
+        
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 5px; }
+        .info-item { background: #f8f9fa; padding: 10px 12px; border-radius: 6px; border-left: 4px solid #1e3c72; font-size: 13px; }
+        .info-item b { color: #1e3c72; display: block; margin-bottom: 2px; font-size: 11px; text-transform: uppercase; }
+
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e1e8ed; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e1e8ed; font-size: 13px; }
+        th { background: #1e3c72; color: white; font-weight: 600; }
+        tr:hover { background: #f8fafc; }
+        
+        .chart-container { position: relative; height: 320px; width: 100%; margin-top: 15px; }
+        
+        .btn-print { background: #28a745; color: white; border: none; padding: 12px 20px; font-weight: bold; font-size: 14px; border-radius: 6px; cursor: pointer; margin-top: 20px; width: 100%; text-align: center; display: block; transition: background 0.3s; }
+        .btn-print:hover { background: #218838; }
+
+        @media(min-width: 768px) {
+            .btn-print { width: auto; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+            header h1 { font-size: 20px; }
+            .card h2 { font-size: 18px; }
+            .card { padding: 25px; }
+        }
+
+        @media print {
+            header, .btn-print, .nav-links { display: none !important; }
+            body { background: white; }
+            .card { box-shadow: none; border: 1px solid #ddd; padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Colégio Estadual Euclides F. Tardin</h1>\n            <p>Professora Lilian | Histórico e Desempenho do Aluno</p>
+        </div>
+        <a href=\"/\">← Voltar ao Painel</a>
+    </header>
+
+    <div class=\"container\">
+        <div class=\"card\">
+            <h2>Informações do Aluno</h2>
+            <div class=\"info-grid\">
+                <div class=\"info-item\"><b>Nome do Aluno</b> <%= aluno.nome %></div>
+                <div class=\"info-item\"><b>Matrícula</b> <%= aluno.matricula %></div>
+                <div class=\"info-item\"><b>Turma</b> <%= aluno.turma %></div>
+                <div class=\"info-item\"><b>Responsável / Tel</b> <%= aluno.responsavel || '-' %> (<%= aluno.telefone || '-' %>)</div>
+            </div>
+        </div>
+
+        <div class=\"card\">
+            <h2>Histórico Completo de Notas e Frequência</h2>
+            <div class=\"table-responsive\">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Matéria</th>
+                            <th>Trimestre</th>
+                            <th>Av. 1</th>
+                            <th>Av. 2</th>
+                            <th>Maior</th>
+                            <th>Trabalhos</th>
+                            <th>Part.</th>
+                            <th>Faltas</th>
+                            <th>Nota Final</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (notas.length === 0) { %>
+                            <tr><td colspan=\"9\" style=\"text-align: center; color: #666; padding: 20px;\">Nenhum registro de nota encontrado.</td></tr>
+                        <% } else { %>
+                            <% notas.forEach(n => { 
+                                const maior = Math.max(n.avaliacao1 || 0, n.avaliacao2 || 0);
+                                const trabalhos = (n.trabalho1 || 0) + (n.trabalho2 || 0) + (n.trabalho3 || 0);
+                                const final = Math.min(10, maior + trabalhos + (n.participacao || 0)).toFixed(1);
+                            %>
+                                <tr>
+                                    <td><b><%= n.materia %></b></td>
+                                    <td><%= n.trimestre %>º Trim</td>
+                                    <td><%= n.avaliacao1 || 0 %></td>
+                                    <td><%= n.avaliacao2 || 0 %></td>
+                                    <td><b style=\"color: #1e3c72;\"><%= maior.toFixed(1) %></b></td>\n                                    <td><%= trabalhos.toFixed(1) %></td>
+                                    <td><%= n.participacao || 0 %></td>
+                                    <td><%= n.faltas || 0 %></td>
+                                    <td><b style=\"color: <%= final >= 5 ? '#28a745' : '#d9534f' %>;\"><%= final %></b></td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class=\"card\">
+            <h2>Gráfico de Desempenho Histórico</h2>
+            <div class=\"chart-container\">
+                <canvas id=\"graficoAluno\"></canvas>
+            </div>
+            <button class=\"btn-print\" onclick=\"window.print()\">🖨️ Imprimir / Salvar Histórico em PDF</button>
+        </div>
+    </div>
+
+    <script>
+        const notasData = <%- JSON.stringify(notas) %>;
+        
+        const labels = notasData.map(n => \`\${n.materia} (\${n.trimestre}ºT)\`);
+        const dadosNotas = notasData.map(n => {
+            const maior = Math.max(n.avaliacao1 || 0, n.avaliacao2 || 0);
+            const trabalhos = (n.trabalho1 || 0) + (n.trabalho2 || 0) + (n.trabalho3 || 0);
+            return Math.min(10, maior + trabalhos + (n.participacao || 0));
+        });
+
+        const ctx = document.getElementById('graficoAluno').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Nota Final por Matéria e Trimestre',
+                    data: dadosNotas,
+                    backgroundColor: '#1e3c72',
+                    borderColor: '#2a5298',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        ticks: { font: { size: 12 } }
+                    },
+                    x: {
+                        ticks: { font: { size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { font: { size: 12 } } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

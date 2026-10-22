@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang=\"pt-BR\">
+<head>
+    <meta charset=\"UTF-8\">
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <title>Relatórios e Ranking - Colégio Estadual Euclides Feliciano Tardin</title>
+    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f0f4f8; color: #333; -webkit-text-size-adjust: 100%; }
+        header { background: #1e3c72; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        header h1 { font-size: 18px; }
+        header p { font-size: 12px; opacity: 0.9; }
+        header a { color: white; text-decoration: none; background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+        header a:hover { background: rgba(255,255,255,0.3); }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 10px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card h2 { color: #1e3c72; margin-bottom: 15px; font-size: 16px; border-bottom: 2px solid #f0f4f8; padding-bottom: 8px; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e1e8ed; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+        th { background: #1e3c72; color: white; }
+        
+        .chart-container { position: relative; height: 320px; width: 100%; margin-top: 15px; }
+        .filtros { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .filtros select, .filtros input { padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; flex: 1; min-width: 160px; }
+        
+        .btn-print { background: #28a745; color: white; border: none; padding: 10px 16px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; font-size: 13px; width: 100%; text-align: center; display: block; }
+        .btn-print:hover { background: #218838; }
+
+        @media(min-width: 768px) {
+            .btn-print { width: auto; display: inline-block; }
+            header h1 { font-size: 20px; }
+            .card h2 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Colégio Estadual Euclides F. Tardin</h1>
+            <p>Professora Lilian | Relatórios e Desempenho Geral</p>
+        </div>
+        <a href=\"/?ano=<%= anoLetivo %>\">← Voltar ao Painel</a>
+    </header>
+
+    <div class=\"container\">
+        <!-- Filtro por Ano Letivo e Turma -->
+        <div class=\"card\">
+            <h2>🔍 Filtrar Relatório e Ranking</h2>
+            <form action=\"/relatorios\" method=\"GET\" class=\"filtros\">
+                <div style=\"flex: 1; min-width: 130px;\">
+                    <label style=\"display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;\">Ano Letivo</label>
+                    <select name=\"ano\" onchange=\"this.form.submit()\">
+                        <% anos.forEach(a => { %>
+                            <option value=\"<%= a %>\" <%= a === anoLetivo ? 'selected' : '' %>><%= a %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div style=\"flex: 2; min-width: 200px;\">
+                    <label style=\"display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;\">Turma</label>
+                    <select name=\"turma\" onchange=\"this.form.submit()\">
+                        <% turmas.forEach(t => { %>
+                            <option value=\"<%= t %>\" <%= t === turmaFiltro ? 'selected' : '' %>><%= t %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Ranking dos 10 Melhores Alunos por Turma -->
+        <div class=\"card\">
+            <h2>🏆 Top 10 Melhores Alunos da Turma (<%= turmaFiltro %> - <%= anoLetivo %>)</h2>
+            <div class=\"table-responsive\">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Nome do Aluno</th>
+                            <th>Turma</th>
+                            <th>Média Geral</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (rankingTurma.length === 0) { %>
+                            <tr><td colspan=\"4\" style=\"text-align: center; padding: 20px;\">Nenhum aluno encontrado nesta turma para o ano <%= anoLetivo %>.</td></tr>
+                        <% } else { %>
+                            <% rankingTurma.forEach((r, idx) => { %>
+                                <tr>
+                                    <td><b>#<%= idx + 1 %></b></td>
+                                    <td><%= r.nome %></td>
+                                    <td><%= r.turma %></td>
+                                    <td><b><%= r.media_geral ? r.media_geral.toFixed(1) : '0.0' %></b></td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráfico Geral por Turma -->
+        <div class=\"card\">
+            <h2>📊 Gráfico de Desempenho Geral da Turma (<%= turmaFiltro %>)</h2>
+            <div class=\"chart-container\">
+                <canvas id=\"graficoTurma\"></canvas>
+            </div>
+            <button class=\"btn-print\" onclick=\"window.print()\">🖨️ Imprimir / Exportar Relatório da Turma (PDF)</button>
+        </div>
+    </div>
+
+    <script>
+        const notasTurma = <%- JSON.stringify(notasTurma) %>;
+        
+        const alunosMap = {};
+        notasTurma.forEach(n => {
+            if (!alunosMap[n.nome]) alunosMap[n.nome] = [];
+            alunosMap[n.nome].push(n.notafinal);
+        });
+
+        const nomesAlunos = Object.keys(alunosMap).slice(0, 20);
+        const mediasAlunos = nomesAlunos.map(nome => {
+            const arr = alunosMap[nome];
+            const soma = arr.reduce((a, b) => a + b, 0);
+            return (soma / arr.length).toFixed(1);
+        });
+
+        const ctx = document.getElementById('graficoTurma').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: nomesAlunos,
+                datasets: [{
+                    label: \`Média Geral por Aluno - Turma \${ <%- JSON.stringify(turmaFiltro) %> }\`,
+                    data: mediasAlunos,
+                    backgroundColor: 'rgba(30, 60, 114, 0.2)',
+                    borderColor: '#1e3c72',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
