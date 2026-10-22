@@ -228,14 +228,8 @@
                                                 <button type="submit" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;">🗑️</button>
                                             </form>
                                         </td>
-                                        <td>
-                                            <% if (reg.telefone) { 
-                                                const msg = encodeURIComponent(`Boletim de ${reg.nome} (${materiaSelecionada} - ${trimestreSelecionado}ºT): Nota Final: ${notaFinal}. Status: ${aprovado ? 'Aprovado' : 'Reprovado'}. Colégio Euclides Feliciano Tardin.`);
-                                            %>
-                                                <a href="https://wa.me/55<%= reg.telefone.replace(/\D/g,'') %>?text=<%= msg %>" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>
-                                            <% } else { %>
-                                                -
-                                            <% } %>
+                                                                                <td>
+                                            <button type="button" class="btn-whatsapp" onclick="abrirModalWhatsApp(this, '<%= reg.nome %>', '<%= reg.telefone || '' %>')">💬 WhatsApp</button>
                                         </td>
                                     </tr>
                                 <% }) %>
@@ -278,5 +272,89 @@
             }
         }
     </script>
+
+    <!-- Modal WhatsApp / QrCode / Número -->
+    <div id="modalWhatsApp" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 25px; border-radius: 10px; width: 90%; max-width: 450px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <h3 style="color: #1e3c72; margin-bottom: 15px; font-size: 18px;">📱 Enviar WhatsApp ao Responsável</h3>
+            <p id="modalAlunoNome" style="font-size: 14px; margin-bottom: 15px; color: #333;"></p>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #1e3c72; margin-bottom: 5px;">Número do Celular (WhatsApp)</label>
+                <input type="text" id="inputTelefone" placeholder="(44) 99999-9999" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+            </div>
+
+            <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 20px; text-align: center; border: 1px dashed #ccc;">
+                <p style="font-size: 12px; color: #555; margin-bottom: 8px;"><b>Opção 2:</b> Escanear QR Code do WhatsApp Web</p>
+                <div id="qrcodeContainer" style="display: inline-block; background: white; padding: 10px; border-radius: 4px;">
+                    <img id="qrCodeImg" src="" alt="QR Code WhatsApp" style="width: 160px; height: 160px; display: none;">
+                    <p id="qrCodePlaceholder" style="font-size: 11px; color: #777; padding: 20px 0;">Clique em "Gerar QR Code" para conectar</p>
+                </div>
+                <br>
+                <button type="button" class="btn" style="background: #17a2b8; margin-top: 8px; font-size: 11px; padding: 5px 10px;" onclick="gerarQrCodeWhatsApp()">Gerar QR Code Web</button>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn" style="background: #6c757d;" onclick="fecharModalWhatsApp()">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="enviarMensagemWhatsApp()">🚀 Enviar Mensagem</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let alunoAtualParaWhats = null;
+
+        function abrirModalWhatsApp(btn, nomeAluno, telefoneAtual) {
+            alunoAtualParaWhats = { nome: nomeAluno };
+            document.getElementById('modalAlunoNome').innerHTML = 'Aluno(a): <b>' + nomeAluno + '</b>';
+            document.getElementById('inputTelefone').value = telefoneAtual || '';
+            document.getElementById('qrCodeImg').style.display = 'none';
+            document.getElementById('qrCodePlaceholder').style.display = 'block';
+            document.getElementById('modalWhatsApp').style.display = 'flex';
+        }
+
+        function fecharModalWhatsApp() {
+            document.getElementById('modalWhatsApp').style.display = 'none';
+        }
+
+        function gerarQrCodeWhatsApp() {
+            const tel = document.getElementById('inputTelefone').value.replace(/\D/g, '');
+            const tr = event.target.closest('tr') || document.querySelector('table tbody tr');
+            // Pegar matéria e trimestre atuais dos selects de filtro
+            const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
+            const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
+            
+            // Simular mensagem para o QR Code (wa.me link codificado em QR)
+            const mensagem = encodeURIComponent(`Boletim de ${alunoAtualParaWhats.nome} (${materia} - ${trimestre}ºT). Colégio Euclides Feliciano Tardin.`);
+            const urlWa = tel ? `https://wa.me/55${tel}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
+            
+            // Gerar QR Code via API pública do qrserver
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(urlWa)}`;
+            
+            document.getElementById('qrCodeImg').src = qrUrl;
+            document.getElementById('qrCodeImg').style.display = 'inline-block';
+            document.getElementById('qrCodePlaceholder').style.display = 'none';
+        }
+
+        function enviarMensagemWhatsApp() {
+            const tel = document.getElementById('inputTelefone').value.replace(/\D/g, '');
+            if (!tel) {
+                alert('Por favor, informe o número do celular do responsável.');
+                return;
+            }
+
+            // Capturar dados da linha do aluno na tabela
+            // Como temos múltiplos alunos, vamos buscar a linha ativa
+            const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
+            const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
+            
+            const msg = encodeURIComponent(`Boletim de ${alunoAtualParaWhats.nome} (${materia} - ${trimestre}ºT). Colégio Euclides Feliciano Tardin.`);
+            
+            const url = `https://wa.me/55${tel}?text=${msg}`;
+            window.open(url, '_blank');
+            fecharModalWhatsApp();
+        }
+    </script>
+    
 </body>
 </html>

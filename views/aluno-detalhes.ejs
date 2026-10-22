@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang=\"pt-BR\">
+<html lang="pt-BR">
 <head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Histórico e Gráfico do Aluno - Colégio Estadual Euclides Feliciano Tardin</title>
-    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f0f4f8; color: #222; -webkit-text-size-adjust: 100%; }
@@ -50,25 +50,26 @@
 <body>
     <header>
         <div>
-            <h1>Colégio Estadual Euclides F. Tardin</h1>\n            <p>Professora Lilian | Histórico e Desempenho do Aluno</p>
+            <h1>Colégio Estadual Euclides F. Tardin</h1>
+            <p>Professora Lilian | Histórico e Desempenho do Aluno</p>
         </div>
-        <a href=\"/\">← Voltar ao Painel</a>
+        <a href="/">← Voltar ao Painel</a>
     </header>
 
-    <div class=\"container\">
-        <div class=\"card\">
+    <div class="container">
+        <div class="card">
             <h2>Informações do Aluno</h2>
-            <div class=\"info-grid\">
-                <div class=\"info-item\"><b>Nome do Aluno</b> <%= aluno.nome %></div>
-                <div class=\"info-item\"><b>Matrícula</b> <%= aluno.matricula %></div>
-                <div class=\"info-item\"><b>Turma</b> <%= aluno.turma %></div>
-                <div class=\"info-item\"><b>Responsável / Tel</b> <%= aluno.responsavel || '-' %> (<%= aluno.telefone || '-' %>)</div>
+            <div class="info-grid">
+                <div class="info-item"><b>Nome do Aluno</b> <%= aluno.nome %></div>
+                <div class="info-item"><b>Matrícula</b> <%= aluno.matricula %></div>
+                <div class="info-item"><b>Turma</b> <%= aluno.turma %></div>
+                <div class="info-item"><b>Responsável / Tel</b> <%= aluno.responsavel || '-' %> (<%= aluno.telefone || '-' %>)</div>
             </div>
         </div>
 
-        <div class=\"card\">
+        <div class="card">
             <h2>Histórico Completo de Notas e Frequência</h2>
-            <div class=\"table-responsive\">
+            <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
@@ -85,7 +86,7 @@
                     </thead>
                     <tbody>
                         <% if (notas.length === 0) { %>
-                            <tr><td colspan=\"9\" style=\"text-align: center; color: #666; padding: 20px;\">Nenhum registro de nota encontrado.</td></tr>
+                            <tr><td colspan="9" style="text-align: center; color: #666; padding: 20px;">Nenhum registro de nota encontrado.</td></tr>
                         <% } else { %>
                             <% notas.forEach(n => { 
                                 const maior = Math.max(n.avaliacao1 || 0, n.avaliacao2 || 0);
@@ -97,10 +98,11 @@
                                     <td><%= n.trimestre %>º Trim</td>
                                     <td><%= n.avaliacao1 || 0 %></td>
                                     <td><%= n.avaliacao2 || 0 %></td>
-                                    <td><b style=\"color: #1e3c72;\"><%= maior.toFixed(1) %></b></td>\n                                    <td><%= trabalhos.toFixed(1) %></td>
+                                    <td><b style="color: #1e3c72;"><%= maior.toFixed(1) %></b></td>
+                                    <td><%= trabalhos.toFixed(1) %></td>
                                     <td><%= n.participacao || 0 %></td>
                                     <td><%= n.faltas || 0 %></td>
-                                    <td><b style=\"color: <%= final >= 5 ? '#28a745' : '#d9534f' %>;\"><%= final %></b></td>
+                                    <td><b style="color: <%= final >= 5 ? '#28a745' : '#d9534f' %>;"><%= final %></b></td>
                                 </tr>
                             <% }) %>
                         <% } %>
@@ -109,19 +111,19 @@
             </div>
         </div>
 
-        <div class=\"card\">
+        <div class="card">
             <h2>Gráfico de Desempenho Histórico</h2>
-            <div class=\"chart-container\">
-                <canvas id=\"graficoAluno\"></canvas>
+            <div class="chart-container">
+                <canvas id="graficoAluno"></canvas>
             </div>
-            <button class=\"btn-print\" onclick=\"window.print()\">🖨️ Imprimir / Salvar Histórico em PDF</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar Histórico em PDF</button>
         </div>
     </div>
 
     <script>
         const notasData = <%- JSON.stringify(notas) %>;
         
-        const labels = notasData.map(n => \`\${n.materia} (\${n.trimestre}ºT)\`);
+        const labels = notasData.map(n => `${n.materia} (${n.trimestre}ºT)`);
         const dadosNotas = notasData.map(n => {
             const maior = Math.max(n.avaliacao1 || 0, n.avaliacao2 || 0);
             const trabalhos = (n.trabalho1 || 0) + (n.trabalho2 || 0) + (n.trabalho3 || 0);
