@@ -302,19 +302,31 @@ app.get('/relatorios', (req, res) => {
                 SELECT a.id, a.nome, a.turma, AVG(MAX(n.avaliacao1, n.avaliacao2) + n.trabalho1 + n.trabalho2 + n.trabalho3 + n.participacao) as media_geral
                 FROM alunos a
                 JOIN notas n ON a.id = n.aluno_id
-                WHERE a.turma = ? AND a.ano_letivo = ?
+                WHERE a.ano_letivo = ?
                 GROUP BY a.id
                 ORDER BY media_geral DESC
                 LIMIT 10
             `;
-            db.all(qRankingTurma, [turmaFiltro, anoLetivo], (err, rankingTurma) => {
-                res.render('relatorios', {
-                    anos: ANOS_LETIVOS_DISPONIVEIS,
-                    anoLetivo,
-                    turmas,
-                    turmaFiltro,
-                    notasTurma: notasTurma || [],
-                    rankingTurma: rankingTurma || []
+            db.all(qRankingTurma, [anoLetivo], (err, rankingTurma) => {
+                const qPodioTurma = `
+                    SELECT a.id, a.nome, a.turma, AVG(MAX(n.avaliacao1, n.avaliacao2) + n.trabalho1 + n.trabalho2 + n.trabalho3 + n.participacao) as media_geral
+                    FROM alunos a
+                    JOIN notas n ON a.id = n.aluno_id
+                    WHERE a.turma = ? AND a.ano_letivo = ?
+                    GROUP BY a.id
+                    ORDER BY media_geral DESC
+                    LIMIT 3
+                `;
+                db.all(qPodioTurma, [turmaFiltro, anoLetivo], (err, podioTurma) => {
+                    res.render('relatorios', {
+                        anos: ANOS_LETIVOS_DISPONIVEIS,
+                        anoLetivo,
+                        turmas,
+                        turmaFiltro,
+                        notasTurma: notasTurma || [],
+                        rankingTurma: rankingTurma || [],
+                        podioTurma: podioTurma || []
+                    });
                 });
             });
         });
