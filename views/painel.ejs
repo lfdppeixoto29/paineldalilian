@@ -91,6 +91,15 @@
                 </form>
             </div>
             <div class="mgmt-card">
+                <h3>➕ Incluir Aluno na Turma (<%= turmaSelecionada %>)</h3>
+                <form action="/aluno/adicionar" method="POST">
+                    <input type="hidden" name="ano_letivo" value="<%= anoLetivo %>">
+                    <input type="hidden" name="turma" value="<%= turmaSelecionada %>">
+                    <input type="text" name="nome" required placeholder="Nome Completo do Aluno">
+                    <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 12px;">+ Adicionar</button>
+                </form>
+            </div>
+            <div class="mgmt-card">
                 <h3>🗑️ Excluir Turma Atual</h3>
                 <form action="/turmas/excluir" method="POST" onsubmit="return confirm('Deseja excluir a turma <%= turmaSelecionada %> no ano <%= anoLetivo %>?');">
                     <input type="hidden" name="ano_letivo" value="<%= anoLetivo %>">
