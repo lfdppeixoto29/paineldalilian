@@ -144,6 +144,33 @@ app.get('/import-export', (req, res) => {
 });
 
 // Excluir Aluno individual
+
+app.post('/aluno/adicionar', (req, res) => {
+    const { nome, turma, ano } = req.body;
+    if (nome && turma) {
+        const anoLetivo = ano || '2026';
+        db.run('INSERT INTO alunos (nome, turma, ano_letivo) VALUES (?, ?, ?)', [nome.trim(), turma.trim(), anoLetivo], function(err) {
+            if (!err) {
+                const alunoId = this.lastID;
+                db.all('SELECT DISTINCT materia FROM notas WHERE ano_letivo = ?', [anoLetivo], (err2, materias) => {
+                    if (materias && materias.length > 0) {
+                        const stmt = db.prepare('INSERT INTO notas (aluno_id, materia, ano_letivo, trimestre, avaliacao1, avaliacao2, trabalho1, trabalho2, trabalho3, participacao, faltas) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0)');
+                        materias.forEach(m => {
+                            ['1', '2', '3'].forEach(trim => {
+                                stmt.run(alunoId, m.materia, anoLetivo, trim);
+                            });
+                        });
+                        stmt.finalize();
+                    }
+                });
+            }
+            res.redirect('/?ano=' + anoLetivo + '&turma=' + encodeURIComponent(turma) + '&sucesso=Aluno incluido com sucesso!');
+        });
+    } else {
+        res.redirect('/');
+    }
+});
+
 app.post('/aluno/excluir', (req, res) => {
     const { aluno_id, turma, ano } = req.body;
     if (aluno_id) {
