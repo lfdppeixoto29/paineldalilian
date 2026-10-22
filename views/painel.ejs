@@ -102,6 +102,11 @@
         </div>
 
         <form action="/" method="GET" class="filtros-card">
+            <div class="form-group" style="grid-column: 1 / -1; background: #eef2f7; padding: 10px; border-radius: 6px; margin-bottom: 5px;">
+                <h4 style="color: #1e3c72; font-size: 15px; margin: 0;">
+                    Turma: <%= turmaSelecionada %> | <%= materiaSelecionada %> (<%= trimestreSelecionado %>ºT) — Total de Alunos: <%= registros.length %>
+                </h4>
+            </div>
             <div class="form-group">
                 <label>Ano Letivo</label>
                 <select name="ano" onchange="this.form.submit()">
