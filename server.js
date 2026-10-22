@@ -8,14 +8,25 @@ const PORT = process.env.PORT || 3000;
 process.chdir(__dirname);
 
 const dbFile = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbFile, (err) => {
-    if (err) {
-        console.error('Erro ao abrir o banco de dados:', err.message);
-    } else {
-        console.log('Conectado ao banco de dados do Colégio Estadual Euclides Feliciano Tardin.');
-        initDb();
-    }
-});
+const tursoUrl = process.env.TURSO_DATABASE_URL;
+const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+let db;
+if (tursoUrl) {
+    const { criarBancoRemoto } = require('./db-client');
+    db = criarBancoRemoto(tursoToken ? { url: tursoUrl, authToken: tursoToken } : { url: tursoUrl });
+    console.log('Conectado ao banco de dados remoto (Turso):', tursoUrl);
+    initDb();
+} else {
+    db = new sqlite3.Database(dbFile, (err) => {
+        if (err) {
+            console.error('Erro ao abrir o banco de dados:', err.message);
+        } else {
+            console.log('Conectado ao banco de dados do Colégio Estadual Euclides Feliciano Tardin.');
+            initDb();
+        }
+    });
+}
 
 function initDb() {
     db.serialize(() => {
@@ -146,29 +157,45 @@ app.get('/import-export', (req, res) => {
 // Excluir Aluno individual
 
 app.post('/aluno/adicionar', (req, res) => {
-    const { nome, turma, ano } = req.body;
-    if (nome && turma) {
-        const anoLetivo = ano || '2026';
-        db.run('INSERT INTO alunos (nome, turma, ano_letivo) VALUES (?, ?, ?)', [nome.trim(), turma.trim(), anoLetivo], function(err) {
-            if (!err) {
-                const alunoId = this.lastID;
-                db.all('SELECT DISTINCT materia FROM notas WHERE ano_letivo = ?', [anoLetivo], (err2, materias) => {
-                    if (materias && materias.length > 0) {
-                        const stmt = db.prepare('INSERT INTO notas (aluno_id, materia, ano_letivo, trimestre, avaliacao1, avaliacao2, trabalho1, trabalho2, trabalho3, participacao, faltas) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0)');
-                        materias.forEach(m => {
-                            ['1', '2', '3'].forEach(trim => {
-                                stmt.run(alunoId, m.materia, anoLetivo, trim);
-                            });
-                        });
-                        stmt.finalize();
+    const { nome, turma } = req.body;
+    const anoLetivo = req.body.ano_letivo || req.body.ano || '2026';
+    if (!nome || !turma) return res.redirect('/');
+
+    const nomeLimpo = nome.trim();
+    const turmaLimpa = turma.trim();
+    const prefixo = (turmaLimpa.match(/\d+/g) || []).join('') || '0000';
+
+    function tentarInserir(sequencia) {
+        const matricula = prefixo + String(sequencia).padStart(2, '0');
+        db.run(
+            'INSERT INTO alunos (nome, matricula, turma, telefone, responsavel, ano_letivo) VALUES (?, ?, ?, ?, ?, ?)',
+            [nomeLimpo, matricula, turmaLimpa, '', '', anoLetivo],
+            function (err) {
+                if (err) {
+                    // Matricula ja existente: tenta a proxima sequencia
+                    if (/UNIQUE/i.test(err.message || '') && sequencia < 999) {
+                        return tentarInserir(sequencia + 1);
                     }
+                    return res.redirect('/?ano=' + anoLetivo + '&turma=' + encodeURIComponent(turmaLimpa) + '&sucesso=Erro ao incluir aluno: ' + encodeURIComponent(err.message || 'falha desconhecida'));
+                }
+
+                const alunoId = this.lastID;
+                db.all('SELECT nome FROM materias ORDER BY nome ASC', (err2, materiasRows) => {
+                    const materias = (materiasRows && materiasRows.length ? materiasRows.map((m) => m.nome) : ['Inglês', 'Língua Portuguesa', 'Reforço']);
+                    const stmt = db.prepare('INSERT INTO notas (aluno_id, turma, materia, trimestre, avaliacao1, avaliacao2, trabalho1, trabalho2, trabalho3, participacao, faltas) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0)');
+                    materias.forEach((materia) => {
+                        [1, 2, 3].forEach((trim) => {
+                            stmt.run(alunoId, turmaLimpa, materia, trim);
+                        });
+                    });
+                    stmt.finalize();
+                    res.redirect('/?ano=' + anoLetivo + '&turma=' + encodeURIComponent(turmaLimpa) + '&sucesso=Aluno incluido com sucesso!');
                 });
             }
-            res.redirect('/?ano=' + anoLetivo + '&turma=' + encodeURIComponent(turma) + '&sucesso=Aluno incluido com sucesso!');
-        });
-    } else {
-        res.redirect('/');
+        );
     }
+
+    tentarInserir(1);
 });
 
 app.post('/aluno/excluir', (req, res) => {
