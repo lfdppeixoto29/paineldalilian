@@ -24,8 +24,26 @@ function criarBancoRemoto(config) {
     // Fila para garantir a ordem das operacoes (equivalente ao modo serialized)
     let fila = Promise.resolve();
 
+    function erroTransitorio(err) {
+        const msg = String((err && err.message) || '').toLowerCase();
+        return /fetch failed|network|econnreset|etimedout|timeout|socket hang up|50[234]|temporar|rate limit/.test(msg);
+    }
+
+    // Repete uma vez (com pequeno intervalo) em caso de falha de rede momentanea
+    function executarComRetry(sql, params, tentativa) {
+        const atual = tentativa || 1;
+        return client.execute({ sql, args: normalizar(params) }).catch((err) => {
+            if (atual < 3 && erroTransitorio(err)) {
+                return new Promise((resolve) => setTimeout(resolve, 400 * atual)).then(() =>
+                    executarComRetry(sql, params, atual + 1)
+                );
+            }
+            throw err;
+        });
+    }
+
     function executar(sql, params) {
-        const execucao = fila.then(() => client.execute({ sql, args: normalizar(params) }));
+        const execucao = fila.then(() => executarComRetry(sql, params));
         fila = execucao.then(
             () => undefined,
             () => undefined

@@ -478,3 +478,22 @@ app.post('/aluno/atualizar/:id', (req, res) => {
         res.redirect(`/aluno/${alunoId}`);
     }
 });
+
+// Rede de seguranca: evita que uma falha isolada derrube o processo (erro 502)
+app.use((req, res) => {
+    res.status(404).send('Pagina nao encontrada.');
+});
+
+app.use((err, req, res, next) => {
+    console.error('Erro na requisicao', req.method, req.originalUrl, '-', err && err.stack ? err.stack : err);
+    if (res.headersSent) return next(err);
+    res.status(500).send('Ocorreu um erro ao processar a solicitacao. Tente novamente.');
+});
+
+process.on('unhandledRejection', (motivo) => {
+    console.error('Promessa rejeitada sem tratamento:', motivo);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Erro nao capturado:', err && err.stack ? err.stack : err);
+});

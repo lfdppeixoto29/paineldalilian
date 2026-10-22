@@ -1,0 +1,24 @@
+name: Manter o painel acordado
+
+# O plano gratuito do Render "dorme" apos ~15 minutos sem acesso.
+# Esse ping a cada 10 minutos evita a primeira requisicao lenta (erro 502/timeout)
+# quando o usuario abre o painel ou salva uma alteracao.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar o painel
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://paineldalilian.onrender.com/)
+            echo "Tentativa $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          exit 1
