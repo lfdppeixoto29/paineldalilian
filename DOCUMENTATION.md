@@ -10,7 +10,7 @@
 - **Perfil do Aluno Editável**: Na página de histórico e desempenho individual do aluno, agora é possível editar e salvar diretamente o Nome do Aluno, o Responsável e o Celular / WhatsApp.
 - **Limpeza de Telefones Genéricos**: Os números de telefone automáticos e genéricos de importação foram limpos do banco de dados, deixando os campos em branco para preenchimento real conforme necessário.
 - **Modal Inteligente de WhatsApp e QR Code**: Ao acionar o WhatsApp do aluno, abre-se uma janela interativa para conferir/ajustar o número e gerar QR Code instantâneo para conexão via WhatsApp Web.
-- **Navegação Otimizada**: Correção do botão "Voltar" na página de detalhes do aluno, permitindo retornar ao painel principal de forma fluida sem perda de sessão.
+- **Navegação Otimizada**: Correção do botão "Voltar" na página de detalhes do aluno e na página de importação/clonagem de turmas (evitando o erro `cannot get /%22//%22`), permitindo retornar ao painel principal de forma fluida sem perda de sessão.
 
 ---
 
