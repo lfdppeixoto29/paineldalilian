@@ -1,3 +1,7 @@
 node_modules/
 .DS_Store
 *.log
+
+# Credenciais locais (nunca versionar)
+config.local.js
+CREDENCIAIS.local.md

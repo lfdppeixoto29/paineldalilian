@@ -1,4 +1,5 @@
-const apiKey = 'rnd_gMFemGGHhGiy9EQykVi0n0c6muYY';
+const local = (() => { try { return require('./config.local'); } catch (e) { return {}; } })();
+const apiKey = process.env.RENDER_API_KEY || local.RENDER_API_KEY;
 
 async function testRenderAPI() {
     try {
