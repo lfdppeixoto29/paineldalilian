@@ -345,14 +345,26 @@ app.get('/relatorios', (req, res) => {
                     LIMIT 3
                 `;
                 db.all(qPodioTurma, [turmaFiltro, anoLetivo], (err, podioTurma) => {
-                    res.render('relatorios', {
-                        anos: ANOS_LETIVOS_DISPONIVEIS,
-                        anoLetivo,
-                        turmas,
-                        turmaFiltro,
-                        notasTurma: notasTurma || [],
-                        rankingTurma: rankingTurma || [],
-                        podioTurma: podioTurma || []
+                    const qPodioGeral = `
+                        SELECT a.id, a.nome, a.turma, AVG(MAX(n.avaliacao1, n.avaliacao2) + n.trabalho1 + n.trabalho2 + n.trabalho3 + n.participacao) as media_geral
+                        FROM alunos a
+                        JOIN notas n ON a.id = n.aluno_id
+                        WHERE a.ano_letivo = ?
+                        GROUP BY a.id
+                        ORDER BY media_geral DESC
+                        LIMIT 3
+                    `;
+                    db.all(qPodioGeral, [anoLetivo], (err, podioGeral) => {
+                        res.render('relatorios', {
+                            anos: ANOS_LETIVOS_DISPONIVEIS,
+                            anoLetivo,
+                            turmas,
+                            turmaFiltro,
+                            notasTurma: notasTurma || [],
+                            rankingTurma: rankingTurma || [],
+                            podioTurma: podioTurma || [],
+                            podioGeral: podioGeral || []
+                        });
                     });
                 });
             });

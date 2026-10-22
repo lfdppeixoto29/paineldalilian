@@ -68,22 +68,47 @@
                 </div>
             </form>
 
-            <!-- Pódio com 3 Troféus da Turma Selecionada -->
-            <% if (typeof podioTurma !== 'undefined' && podioTurma.length > 0) { %>
-                <div style="margin-top: 20px; background: #eef2f7; padding: 15px; border-radius: 8px; border: 1px solid #d0d7de;">
-                    <h3 style="color: #1e3c72; font-size: 15px; margin-bottom: 12px; text-align: center;">🏆 Pódio - Top 3 da Turma (<%= turmaFiltro %>)</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; text-align: center;">
-                        <% podioTurma.forEach((p, index) => { 
-                            const medalhas = ['🥇 1º Lugar', '🥈 2º Lugar', '🥉 3º Lugar'];
-                            const coresBg = ['#fff3cd', '#e2e3e5', '#f8d7da'];
-                        %>
-                            <div style="background: <%= coresBg[index] || 'white' %>; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
-                                <div style="font-size: 14px; font-weight: bold; margin-bottom: 4px;"><%= medalhas[index] %></div>
-                                <div style="font-size: 13px; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= p.nome %></div>
-                                <div style="font-size: 12px; color: #555; margin-top: 2px;">Média: <b><%= p.media_geral ? p.media_geral.toFixed(1) : '0.0' %></b></div>
+            <!-- Pódios com 3 Troféus: Turma Selecionada e Geral (todas as turmas) -->
+            <% const medalhas = ['🥇 1º Lugar', '🥈 2º Lugar', '🥉 3º Lugar'];
+               const coresBg = ['#fff3cd', '#e2e3e5', '#f8d7da'];
+               const temTurma = typeof podioTurma !== 'undefined' && podioTurma.length > 0;
+               const temGeral = typeof podioGeral !== 'undefined' && podioGeral.length > 0; %>
+            <% if (temTurma || temGeral) { %>
+                <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                    <% if (temTurma) { %>
+                        <div style="background: #eef2f7; padding: 15px; border-radius: 8px; border: 1px solid #d0d7de;">
+                            <h3 style="color: #1e3c72; font-size: 15px; margin-bottom: 12px; text-align: center;">🏆 Pódio - Top 3 da Turma (<%= turmaFiltro %>)</h3>
+                            <div style="display: grid; gap: 8px;">
+                                <% podioTurma.forEach((p, index) => { %>
+                                    <div style="background: <%= coresBg[index] || 'white' %>; padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                        <div style="min-width: 0;">
+                                            <div style="font-size: 12px; font-weight: bold;"><%= medalhas[index] %></div>
+                                            <div style="font-size: 13px; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= p.nome %></div>
+                                        </div>
+                                        <div style="font-size: 12px; color: #555; white-space: nowrap;">Média: <b><%= p.media_geral ? p.media_geral.toFixed(1) : '0.0' %></b></div>
+                                    </div>
+                                <% }) %>
                             </div>
-                        <% }) %>
-                    </div>
+                        </div>
+                    <% } %>
+
+                    <% if (temGeral) { %>
+                        <div style="background: #eef2f7; padding: 15px; border-radius: 8px; border: 1px solid #d0d7de;">
+                            <h3 style="color: #1e3c72; font-size: 15px; margin-bottom: 12px; text-align: center;">🏆 Pódio Geral - Top 3 de Todas as Turmas (<%= anoLetivo %>)</h3>
+                            <div style="display: grid; gap: 8px;">
+                                <% podioGeral.forEach((p, index) => { %>
+                                    <div style="background: <%= coresBg[index] || 'white' %>; padding: 8px 10px; border-radius: 6px; border: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                        <div style="min-width: 0;">
+                                            <div style="font-size: 12px; font-weight: bold;"><%= medalhas[index] %></div>
+                                            <div style="font-size: 13px; font-weight: 600; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= p.nome %></div>
+                                            <div style="font-size: 11px; color: #666;">Turma: <%= p.turma %></div>
+                                        </div>
+                                        <div style="font-size: 12px; color: #555; white-space: nowrap;">Média: <b><%= p.media_geral ? p.media_geral.toFixed(1) : '0.0' %></b></div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                    <% } %>
                 </div>
             <% } %>
         </div>
