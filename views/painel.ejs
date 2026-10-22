@@ -193,7 +193,7 @@
                                     const aprovado = notaFinal >= 5.0;
                                 %>
                                     <tr>
-                                        <td><%= reg.matricula %></td>
+                                        <td><%= String(index + 1).padStart(2, '0') %> - <%= reg.matricula %></td>
                                         <td>
                                             <%= reg.nome %>
                                             <input type="hidden" name="aluno_id" value="<%= reg.aluno_id %>">
