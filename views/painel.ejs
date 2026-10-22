@@ -148,7 +148,7 @@
 
             <div class="tabela-card">
                 <div class="tabela-cabecalho">
-                    <h2>Turma: <%= turmaSelecionada %> | <%= materiaSelecionada %> (<%= trimestreSelecionado %>ºT)</h2>
+                    <h2>Turma: <%= turmaSelecionada %> | <%= materiaSelecionada %> (<%= trimestreSelecionado %>ºT) — Total de Alunos: <%= registros.length %></h2>
                     <div class="actions-top">
                         <a href="/exportar/excel?ano=<%= anoLetivo %>&turma=<%= encodeURIComponent(turmaSelecionada) %>&materia=<%= encodeURIComponent(materiaSelecionada) %>&trimestre=<%= trimestreSelecionado %>" class="btn" style="background: #17a2b8; text-decoration: none; padding: 8px 12px; font-size: 12px;">📥 Excel</a>
                         <button type="submit" class="btn btn-success" style="padding: 8px 12px; font-size: 12px;">💾 Salvar</button>
