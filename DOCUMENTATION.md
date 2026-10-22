@@ -5,7 +5,15 @@
 
 ---
 
-## 1. Visão Geral do Sistema
+## 1. Atualizações Recentes (Outubro de 2026)
+- **Perfil do Aluno Editável**: Na página de histórico e desempenho individual do aluno, agora é possível editar e salvar diretamente o Nome do Aluno, o Responsável e o Celular / WhatsApp.
+- **Limpeza de Telefones Genéricos**: Os números de telefone automáticos e genéricos de importação foram limpos do banco de dados, deixando os campos em branco para preenchimento real conforme necessário.
+- **Modal Inteligente de WhatsApp e QR Code**: Ao acionar o WhatsApp do aluno, abre-se uma janela interativa para conferir/ajustar o número e gerar QR Code instantâneo para conexão via WhatsApp Web.
+- **Navegação Otimizada**: Correção do botão "Voltar" na página de detalhes do aluno, permitindo retornar ao painel principal de forma fluida sem perda de sessão.
+
+---
+
+## 2. Visão Geral do Sistema
 O Painel Acadêmico é uma aplicação web desenvolvida sob medida para a Professora Lilian gerenciar diários de classe, notas, faltas, frequência, relatórios estatísticos e comunicação via WhatsApp com responsáveis, suportando múltiplos anos letivos (2026-2031) e turmas do Ensino Fundamental e Médio (incluindo EMTI).
 
 ---
