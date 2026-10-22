@@ -387,3 +387,16 @@ app.get('/exportar/excel', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Painel do Colégio Estadual Euclides Feliciano Tardin rodando em http://localhost:${PORT}`);
 });
+
+app.post('/aluno/atualizar/:id', (req, res) => {
+    const alunoId = req.params.id;
+    const { nome, telefone, responsavel } = req.body;
+    if (nome) {
+        db.run("UPDATE alunos SET nome = ?, telefone = ?, responsavel = ? WHERE id = ?", 
+            [nome.trim(), telefone ? telefone.trim() : '', responsavel ? responsavel.trim() : '', alunoId], () => {
+            res.redirect(`/aluno/${alunoId}?sucesso=Dados atualizados com sucesso!`);
+        });
+    } else {
+        res.redirect(`/aluno/${alunoId}`);
+    }
+});
