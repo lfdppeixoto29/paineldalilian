@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang=\"pt-BR\">
+<html lang="pt-BR">
 <head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relatórios e Ranking - Colégio Estadual Euclides Feliciano Tardin</title>
-    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f0f4f8; color: #333; -webkit-text-size-adjust: 100%; }
@@ -42,27 +42,27 @@
             <h1>Colégio Estadual Euclides F. Tardin</h1>
             <p>Professora Lilian | Relatórios e Desempenho Geral</p>
         </div>
-        <a href=\"/?ano=<%= anoLetivo %>\">← Voltar ao Painel</a>
+        <a href="/?ano=<%= anoLetivo %>&turma=<%= encodeURIComponent(turmaFiltro) %>">← Voltar ao Painel</a>
     </header>
 
-    <div class=\"container\">
+    <div class="container">
         <!-- Filtro por Ano Letivo e Turma -->
-        <div class=\"card\">
+        <div class="card">
             <h2>🔍 Filtrar Relatório e Ranking</h2>
-            <form action=\"/relatorios\" method=\"GET\" class=\"filtros\">
-                <div style=\"flex: 1; min-width: 130px;\">
-                    <label style=\"display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;\">Ano Letivo</label>
-                    <select name=\"ano\" onchange=\"this.form.submit()\">
+            <form action="/relatorios" method="GET" class="filtros">
+                <div style="flex: 1; min-width: 130px;">
+                    <label style="display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;">Ano Letivo</label>
+                    <select name="ano" onchange="this.form.submit()">
                         <% anos.forEach(a => { %>
-                            <option value=\"<%= a %>\" <%= a === anoLetivo ? 'selected' : '' %>><%= a %></option>
+                            <option value="<%= a %>" <%= a === anoLetivo ? 'selected' : '' %>><%= a %></option>
                         <% }) %>
                     </select>
                 </div>
-                <div style=\"flex: 2; min-width: 200px;\">
-                    <label style=\"display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;\">Turma</label>
-                    <select name=\"turma\" onchange=\"this.form.submit()\">
+                <div style="flex: 2; min-width: 200px;">
+                    <label style="display:block; font-size:12px; font-weight:bold; color:#1e3c72; margin-bottom:4px;">Turma</label>
+                    <select name="turma" onchange="this.form.submit()">
                         <% turmas.forEach(t => { %>
-                            <option value=\"<%= t %>\" <%= t === turmaFiltro ? 'selected' : '' %>><%= t %></option>
+                            <option value="<%= t %>" <%= t === turmaFiltro ? 'selected' : '' %>><%= t %></option>
                         <% }) %>
                     </select>
                 </div>
@@ -70,9 +70,9 @@
         </div>
 
         <!-- Ranking dos 10 Melhores Alunos por Turma -->
-        <div class=\"card\">
+        <div class="card">
             <h2>🏆 Top 10 Melhores Alunos da Turma (<%= turmaFiltro %> - <%= anoLetivo %>)</h2>
-            <div class=\"table-responsive\">
+            <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
@@ -84,7 +84,7 @@
                     </thead>
                     <tbody>
                         <% if (rankingTurma.length === 0) { %>
-                            <tr><td colspan=\"4\" style=\"text-align: center; padding: 20px;\">Nenhum aluno encontrado nesta turma para o ano <%= anoLetivo %>.</td></tr>
+                            <tr><td colspan="4" style="text-align: center; padding: 20px;">Nenhum aluno encontrado nesta turma para o ano <%= anoLetivo %>.</td></tr>
                         <% } else { %>
                             <% rankingTurma.forEach((r, idx) => { %>
                                 <tr>
@@ -101,12 +101,12 @@
         </div>
 
         <!-- Gráfico Geral por Turma -->
-        <div class=\"card\">
+        <div class="card">
             <h2>📊 Gráfico de Desempenho Geral da Turma (<%= turmaFiltro %>)</h2>
-            <div class=\"chart-container\">
-                <canvas id=\"graficoTurma\"></canvas>
+            <div class="chart-container">
+                <canvas id="graficoTurma"></canvas>
             </div>
-            <button class=\"btn-print\" onclick=\"window.print()\">🖨️ Imprimir / Exportar Relatório da Turma (PDF)</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Exportar Relatório da Turma (PDF)</button>
         </div>
     </div>
 
@@ -132,7 +132,7 @@
             data: {
                 labels: nomesAlunos,
                 datasets: [{
-                    label: \`Média Geral por Aluno - Turma \${ <%- JSON.stringify(turmaFiltro) %> }\`,
+                    label: `Média Geral por Aluno - Turma ${ <%- JSON.stringify(turmaFiltro) %> }`,
                     data: mediasAlunos,
                     backgroundColor: 'rgba(30, 60, 114, 0.2)',
                     borderColor: '#1e3c72',
