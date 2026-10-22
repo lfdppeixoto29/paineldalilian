@@ -6,6 +6,7 @@
 ---
 
 ## 1. Atualizações Recentes (Outubro de 2026)
+- **Inclusão Direta de Alunos**: Adicionado botão e card de 'Incluir Aluno na Turma' diretamente no painel principal ao lado da exclusão de turma, com criação automática de registros de notas vazias em todas as matérias para os 3 trimestres.
 - **Perfil do Aluno Editável**: Na página de histórico e desempenho individual do aluno, agora é possível editar e salvar diretamente o Nome do Aluno, o Responsável e o Celular / WhatsApp.
 - **Limpeza de Telefones Genéricos**: Os números de telefone automáticos e genéricos de importação foram limpos do banco de dados, deixando os campos em branco para preenchimento real conforme necessário.
 - **Modal Inteligente de WhatsApp e QR Code**: Ao acionar o WhatsApp do aluno, abre-se uma janela interativa para conferir/ajustar o número e gerar QR Code instantâneo para conexão via WhatsApp Web.
