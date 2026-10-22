@@ -21,7 +21,7 @@ O Painel Acadêmico é uma aplicação web desenvolvida sob medida para a Profes
 
 ## 2. Tecnologias Utilizadas
 - **Backend:** Node.js, Express.js
-- **Banco de Dados:** SQLite (`database.sqlite`) com inicialização e auto-sincronização de listas oficiais (`seed_oficial.js`).
+- **Banco de Dados:** Turso (libSQL / SQLite na nuvem) em produção, acessado via `@libsql/client` com a camada de compatibilidade `db-client.js`. Em desenvolvimento, sem as variáveis `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`, o sistema usa o arquivo local `database.sqlite`.
 - **Template Engine:** EJS (Embedded JavaScript Templates)
 - **Estilização:** CSS Responsivo com suporte otimizado para dispositivos móveis (Smartphones e Tablets).
 - **Hospedagem e Deploy:** Render (Serviço Web Node.js com deploy contínuo via GitHub).
@@ -52,8 +52,10 @@ O Painel Acadêmico é uma aplicação web desenvolvida sob medida para a Profes
 
 ## 4. Estrutura do Projeto
 - `server.js`: Aplicação principal Express, rotas e operações SQL otimizadas com `GROUP BY a.id`.
-- `seed_oficial.js`: Módulo de validação e garantia das listas oficiais de alunos por turma.
-- `database.sqlite`: Banco de dados relacional contendo turmas, alunos, notas, matérias e avisos.
+- `db-client.js`: Camada de compatibilidade que expõe a API do `sqlite3` sobre o `@libsql/client` (Turso), permitindo usar o banco remoto sem alterar as rotas.
+- `migrar_turso.js`: Script de migração dos dados do `database.sqlite` local para o banco remoto (Turso).
+- `seed_oficial.js`: Módulo de validação e garantia das listas oficiais de alunos por turma (não é executado automaticamente).
+- `database.sqlite`: Banco local usado apenas em desenvolvimento (produção usa o Turso).
 - `views/painel.ejs`: Interface principal do diário de classe e filtros.
 - `views/aluno-detalhes.ejs`: Histórico individual do aluno e gráficos de desempenho.
 - `views/relatorios.ejs`: Relatórios consolidados da turma e rankings.
