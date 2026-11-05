@@ -113,6 +113,56 @@
             <% } %>
         </div>
 
+        <!-- Novas Opções de Relatório e Envio -->
+        <div class="card" style="border: 2px solid #1e3c72;">
+            <h2>📤 Opções de Envio e Exportação de Relatórios</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                <!-- Por Aluno -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                    <h3 style="font-size: 14px; color: #1e3c72; margin-bottom: 10px;">👤 Relatório Individual (Aluno)</h3>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 11px; font-weight: bold; display: block; margin-bottom: 3px;">Selecione o Aluno:</label>
+                        <select id="selectAlunoIndividual" style="width: 100%; padding: 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px;">
+                            <% 
+                            const alunosUnicos = {};
+                            (alunosTurmaRows || []).forEach(a => { if (!alunosUnicos[a.aluno_id]) alunosUnicos[a.aluno_id] = a; });
+                            Object.values(alunosUnicos).forEach(aluno => { 
+                            %>
+                                <option value="<%= aluno.aluno_id %>" data-nome="<%= aluno.nome %>" data-tel="<%= aluno.telefone || '' %>"><%= aluno.nome %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button class="btn" style="background: #25d366; flex: 1; font-size: 11px;" onclick="enviarRelatorioIndividual('whatsapp')">💬 WhatsApp</button>
+                        <button class="btn" style="background: #d9534f; flex: 1; font-size: 11px;" onclick="enviarRelatorioIndividual('pdf')">📄 PDF</button>
+                        <button class="btn" style="background: #17a2b8; flex: 1; font-size: 11px;" onclick="enviarRelatorioIndividual('excel')">📊 Excel</button>
+                    </div>
+                </div>
+
+                <!-- Por Turma -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                    <h3 style="font-size: 14px; color: #1e3c72; margin-bottom: 10px;">👥 Relatório da Turma (<%= turmaFiltro %>)</h3>
+                    <p style="font-size: 11px; color: #666; margin-bottom: 12px;">Envia o gráfico de desempenho e ranking da turma selecionada.</p>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button class="btn" style="background: #25d366; flex: 1; font-size: 11px;" onclick="enviarRelatorioTurma('whatsapp')">💬 WhatsApp</button>
+                        <button class="btn" style="background: #d9534f; flex: 1; font-size: 11px;" onclick="enviarRelatorioTurma('pdf')">📄 PDF</button>
+                        <button class="btn" style="background: #17a2b8; flex: 1; font-size: 11px;" onclick="enviarRelatorioTurma('excel')">📊 Excel</button>
+                    </div>
+                </div>
+
+                <!-- Todos os Alunos -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #ddd;">
+                    <h3 style="font-size: 14px; color: #1e3c72; margin-bottom: 10px;">🌎 Todos os Alunos (<%= anoLetivo %>)</h3>
+                    <p style="font-size: 11px; color: #666; margin-bottom: 12px;">Processa relatórios de todos os alunos do ano letivo.</p>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button class="btn" style="background: #25d366; flex: 1; font-size: 11px;" onclick="enviarRelatorioTodos('whatsapp')">💬 WhatsApp</button>
+                        <button class="btn" style="background: #d9534f; flex: 1; font-size: 11px;" onclick="enviarRelatorioTodos('pdf')">📄 PDF</button>
+                        <button class="btn" style="background: #17a2b8; flex: 1; font-size: 11px;" onclick="enviarRelatorioTodos('excel')">📊 Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Ranking dos 10 Melhores Alunos de Todas as Turmas -->
         <div class="card">
             <h2>🏆 Top 10 Melhores Alunos (Todas as Turmas - <%= anoLetivo %>)</h2>
@@ -196,6 +246,61 @@
                 }
             }
         });
+
+        function enviarRelatorioIndividual(tipo) {
+            const select = document.getElementById('selectAlunoIndividual');
+            const alunoId = select.value;
+            const nome = select.options[select.selectedIndex].dataset.nome;
+            const tel = select.options[select.selectedIndex].dataset.tel.replace(/\D/g, '');
+            const urlBase = window.location.origin;
+            const linkAluno = `${urlBase}/aluno/${alunoId}`;
+
+            if (tipo === 'whatsapp') {
+                if (!tel) {
+                    const novoTel = prompt(`Informe o WhatsApp para ${nome}:`, "");
+                    if (!novoTel) return;
+                    window.open(`https://wa.me/55${novoTel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório de Desempenho*\n\nOlá! Segue o link com o gráfico e histórico escolar de *${nome}*.\n\n🔗 Acesse aqui: ${linkAluno}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                } else {
+                    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(`📊 *Relatório de Desempenho*\n\nOlá! Segue o link com o gráfico e histórico escolar de *${nome}*.\n\n🔗 Acesse aqui: ${linkAluno}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                }
+            } else if (tipo === 'pdf') {
+                window.open(linkAluno, '_blank');
+                // O usuário pode imprimir/salvar em PDF na página do aluno
+            } else if (tipo === 'excel') {
+                window.location.href = `/exportar/excel?aluno_id=${alunoId}&ano=<%= anoLetivo %>`;
+            }
+        }
+
+        function enviarRelatorioTurma(tipo) {
+            const turma = "<%= turmaFiltro %>";
+            const urlBase = window.location.origin;
+            const linkRelatorio = `${urlBase}/relatorios?turma=${encodeURIComponent(turma)}&ano=<%= anoLetivo %>`;
+
+            if (tipo === 'whatsapp') {
+                const tel = prompt("Informe o WhatsApp para envio do relatório da turma:", "");
+                if (!tel) return;
+                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório da Turma: ${turma}*\n\nConfira o desempenho geral, pódio e ranking da turma no link abaixo:\n\n🔗 ${linkRelatorio}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+            } else if (tipo === 'pdf') {
+                window.print();
+            } else if (tipo === 'excel') {
+                window.location.href = `/exportar/excel?turma=${encodeURIComponent(turma)}&ano=<%= anoLetivo %>`;
+            }
+        }
+
+        function enviarRelatorioTodos(tipo) {
+            const urlBase = window.location.origin;
+            const linkGeral = `${urlBase}/relatorios?ano=<%= anoLetivo %>`;
+
+            if (tipo === 'whatsapp') {
+                const tel = prompt("Informe o WhatsApp para envio do relatório geral:", "");
+                if (!tel) return;
+                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório Geral - Ano Letivo <%= anoLetivo %>*\n\nConfira o desempenho de todas as turmas e o ranking geral no link abaixo:\n\n🔗 ${linkGeral}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+            } else if (tipo === 'pdf') {
+                window.print();
+            } else if (tipo === 'excel') {
+                window.location.href = `/exportar/excel?ano=<%= anoLetivo %>`;
+            }
+        }
     </script>
 </body>
 </html>

@@ -238,7 +238,7 @@
                                             </form>
                                         </td>
                                                                                 <td>
-                                            <button type="button" class="btn-whatsapp" onclick="abrirModalWhatsApp(this, '<%= reg.nome %>', '<%= reg.telefone || '' %>')">💬 WhatsApp</button>
+                                            <button type="button" class="btn-whatsapp" onclick="abrirModalWhatsApp(this, '<%= reg.nome %>', '<%= reg.telefone || '' %>', '<%= reg.aluno_id %>')">💬 WhatsApp</button>
                                         </td>
                                     </tr>
                                 <% }) %>
@@ -313,8 +313,8 @@
     <script>
         let alunoAtualParaWhats = null;
 
-        function abrirModalWhatsApp(btn, nomeAluno, telefoneAtual) {
-            alunoAtualParaWhats = { nome: nomeAluno };
+        function abrirModalWhatsApp(btn, nomeAluno, telefoneAtual, idAluno) {
+            alunoAtualParaWhats = { nome: nomeAluno, id: idAluno };
             document.getElementById('modalAlunoNome').innerHTML = 'Aluno(a): <b>' + nomeAluno + '</b>';
             document.getElementById('inputTelefone').value = telefoneAtual || '';
             document.getElementById('qrCodeImg').style.display = 'none';
@@ -352,12 +352,15 @@
                 return;
             }
 
-            // Capturar dados da linha do aluno na tabela
-            // Como temos múltiplos alunos, vamos buscar a linha ativa
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
             
-            const msg = encodeURIComponent(`Boletim de ${alunoAtualParaWhats.nome} (${materia} - ${trimestre}ºT). Colégio Euclides Feliciano Tardin.`);
+            const urlBase = window.location.origin;
+            // Pegar o ID do aluno atual da linha ou do modal (precisamos do ID para o link)
+            const alunoId = alunoAtualParaWhats.id || ''; 
+            const linkAluno = `${urlBase}/aluno/${alunoId}`;
+
+            const msg = encodeURIComponent(`📊 *Boletim de ${alunoAtualParaWhats.nome}* (${materia} - ${trimestre}ºT)\n\nOlá! Segue o link com o desempenho escolar completo e gráfico de notas.\n\n🔗 Acesse aqui: ${linkAluno}\n\n_Colégio Euclides Feliciano Tardin_`);
             
             const url = `https://wa.me/55${tel}?text=${msg}`;
             window.open(url, '_blank');

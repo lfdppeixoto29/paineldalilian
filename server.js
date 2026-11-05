@@ -355,15 +355,35 @@ app.get('/relatorios', (req, res) => {
                         LIMIT 3
                     `;
                     db.all(qPodioGeral, [anoLetivo], (err, podioGeral) => {
-                        res.render('relatorios', {
-                            anos: ANOS_LETIVOS_DISPONIVEIS,
-                            anoLetivo,
-                            turmas,
-                            turmaFiltro,
-                            notasTurma: notasTurma || [],
-                            rankingTurma: rankingTurma || [],
-                            podioTurma: podioTurma || [],
-                            podioGeral: podioGeral || []
+                        const qAlunosTurmaCompleta = `
+                            SELECT a.id as aluno_id, a.nome, a.matricula, a.turma, a.telefone, a.responsavel,
+                                   n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+                            FROM alunos a
+                            LEFT JOIN notas n ON a.id = n.aluno_id
+                            WHERE a.turma = ? AND a.ano_letivo = ?
+                        `;
+                        db.all(qAlunosTurmaCompleta, [turmaFiltro, anoLetivo], (err, alunosTurmaRows) => {
+                            const qTodosAlunosCompleta = `
+                                SELECT a.id as aluno_id, a.nome, a.matricula, a.turma, a.telefone, a.responsavel,
+                                       n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+                                FROM alunos a
+                                LEFT JOIN notas n ON a.id = n.aluno_id
+                                WHERE a.ano_letivo = ?
+                            `;
+                            db.all(qTodosAlunosCompleta, [anoLetivo], (err, todosAlunosRows) => {
+                                res.render('relatorios', {
+                                    anos: ANOS_LETIVOS_DISPONIVEIS,
+                                    anoLetivo,
+                                    turmas,
+                                    turmaFiltro,
+                                    notasTurma: notasTurma || [],
+                                    rankingTurma: rankingTurma || [],
+                                    podioTurma: podioTurma || [],
+                                    podioGeral: podioGeral || [],
+                                    alunosTurmaRows: alunosTurmaRows || [],
+                                    todosAlunosRows: todosAlunosRows || []
+                                });
+                            });
                         });
                     });
                 });
@@ -432,16 +452,57 @@ app.post('/importar-diario', (req, res) => {
 });
 
 app.get('/exportar/excel', (req, res) => {
-    const { turma, materia, trimestre, ano } = req.query;
+    const { turma, materia, trimestre, ano, aluno_id } = req.query;
     const anoLetivo = ano || '2026';
-    const query = `
-        SELECT a.matricula, a.nome, a.turma, n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
-        FROM alunos a
-        LEFT JOIN notas n ON a.id = n.aluno_id AND n.materia = ? AND n.trimestre = ?
-        WHERE a.turma = ? AND a.ano_letivo = ?
-    `;
-    db.all(query, [materia || 'Inglês', trimestre || '1', turma || '901', anoLetivo], (err, rows) => {
-        let csv = `Colégio Estadual Euclides Feliciano Tardin - Diário de Classe (${anoLetivo})\n`;
+    
+    let query = "";
+    let params = [];
+    let filename = "";
+
+    if (aluno_id) {
+        query = `
+            SELECT a.matricula, a.nome, a.turma, n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+            FROM alunos a
+            LEFT JOIN notas n ON a.id = n.aluno_id
+            WHERE a.id = ? AND a.ano_letivo = ?
+        `;
+        params = [aluno_id, anoLetivo];
+        filename = `boletim_individual_${aluno_id}_${anoLetivo}.csv`;
+    } else if (turma && !materia) {
+        query = `
+            SELECT a.matricula, a.nome, a.turma, n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+            FROM alunos a
+            LEFT JOIN notas n ON a.id = n.aluno_id
+            WHERE a.turma = ? AND a.ano_letivo = ?
+        `;
+        params = [turma, anoLetivo];
+        filename = `relatorio_turma_${turma}_${anoLetivo}.csv`;
+    } else if (turma && materia) {
+        query = `
+            SELECT a.matricula, a.nome, a.turma, n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+            FROM alunos a
+            LEFT JOIN notas n ON a.id = n.aluno_id AND n.materia = ? AND n.trimestre = ?
+            WHERE a.turma = ? AND a.ano_letivo = ?
+        `;
+        params = [materia, trimestre || '1', turma, anoLetivo];
+        filename = `diario_${turma}_${materia}_T${trimestre || '1'}_${anoLetivo}.csv`;
+    } else {
+        query = `
+            SELECT a.matricula, a.nome, a.turma, n.materia, n.trimestre, n.avaliacao1, n.avaliacao2, n.trabalho1, n.trabalho2, n.trabalho3, n.participacao, n.faltas
+            FROM alunos a
+            LEFT JOIN notas n ON a.id = n.aluno_id
+            WHERE a.ano_letivo = ?
+        `;
+        params = [anoLetivo];
+        filename = `relatorio_geral_${anoLetivo}.csv`;
+    }
+
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Erro ao gerar arquivo.");
+        }
+        let csv = `Colégio Estadual Euclides Feliciano Tardin - Relatório (${anoLetivo})\n`;
         csv += "Matricula,Nome,Turma,Materia,Trimestre,Avaliacao1,Avaliacao2,MaiorAvaliacao,Trabalho1,Trabalho2,Trabalho3,Participacao,Faltas,NotaFinal,Status\n";
         (rows || []).forEach(r => {
             const av1 = r.avaliacao1 || 0;
@@ -452,12 +513,12 @@ app.get('/exportar/excel', (req, res) => {
             const t3 = r.trabalho3 || 0;
             const pt = r.participacao || 0;
             const notaFinalCalculada = Math.min(10, maiorAv + t1 + t2 + t3 + pt).toFixed(1);
-            const status = notaFinalCalculada >= 5.0 ? "Aprovado" : "Reprovado (Nota Vermelha)";
-            csv += `"${r.matricula}","${r.nome}","${r.turma}","${r.materia || materia}","${r.trimestre || trimestre}",${av1},${av2},${maiorAv},${t1},${t2},${t3},${pt},${r.faltas || 0},${notaFinalCalculada},"${status}"\n`;
+            const status = notaFinalCalculada >= 5.0 ? "Aprovado" : "Reprovado";
+            csv += `"${r.matricula}","${r.nome}","${r.turma}","${r.materia || 'N/A'}","${r.trimestre || 'N/A'}",${av1},${av2},${maiorAv},${t1},${t2},${t3},${pt},${r.faltas || 0},${notaFinalCalculada},"${status}"\n`;
         });
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename=diario_oficial_${anoLetivo}_${turma}_${materia}.csv`);
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
         res.send(csv);
     });
 });
