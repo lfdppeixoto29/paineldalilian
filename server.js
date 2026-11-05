@@ -1,6 +1,7 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -309,6 +310,55 @@ app.get('/aluno/:id', (req, res) => {
         
         db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], (err, notas) => {
             res.render('aluno-detalhes', { aluno, notas: notas || [], autoImprimir });
+        });
+    });
+});
+
+app.get('/api/gerar-pdf/:id', (req, res) => {
+    const alunoId = req.params.id;
+    db.get("SELECT * FROM alunos WHERE id = ?", [alunoId], (err, aluno) => {
+        if (!aluno) return res.status(404).send("Aluno não encontrado.");
+
+        db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], (err, notas) => {
+            const doc = new PDFDocument({ margin: 50 });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename=boletim_${aluno.nome.replace(/\s+/g, '_')}.pdf`);
+            doc.pipe(res);
+
+            // Cabeçalho
+            doc.fontSize(18).fillColor('#1e3c72').text('Colégio Estadual Euclides Feliciano Tardin', { align: 'center' });
+            doc.fontSize(12).fillColor('#555').text('Relatório de Desempenho Escolar', { align: 'center' });
+            doc.moveDown(1.5);
+
+            // Dados do Aluno
+            doc.fontSize(12).fillColor('#000').text(`Aluno(a): ${aluno.nome}`);
+            doc.text(`Matrícula: ${aluno.matricula} | Turma: ${aluno.turma}`);
+            doc.text(`Responsável: ${aluno.responsavel || 'Não informado'} | Telefone: ${aluno.telefone || 'Não informado'}`);
+            doc.moveDown(1.5);
+
+            // Tabela de Notas
+            doc.fontSize(14).fillColor('#1e3c72').text('Histórico de Notas e Frequência', { underline: true });
+            doc.moveDown(0.8);
+
+            (notas || []).forEach((n, idx) => {
+                const av1 = n.avaliacao1 || 0;
+                const av2 = n.avaliacao2 || 0;
+                const maior = Math.max(av1, av2);
+                const trabalhos = (n.trabalho1 || 0) + (n.trabalho2 || 0) + (n.trabalho3 || 0);
+                const part = n.participacao || 0;
+                const final = Math.min(10, maior + trabalhos + part).toFixed(1);
+                const status = final >= 5.0 ? 'APROVADO' : 'REPROVADO';
+
+                doc.fontSize(11).fillColor('#333').text(`${idx + 1}. Matéria: ${n.materia} (${n.trimestre}º Trimestre)`);
+                doc.text(`   Av1: ${av1} | Av2: ${av2} (Maior: ${maior}) | Trabalhos: ${trabalhos} | Part: ${part} | Faltas: ${n.faltas || 0}`);
+                doc.text(`   Nota Final: ${final} - Status: ${status}`);
+                doc.moveDown(0.5);
+            });
+
+            doc.moveDown(2);
+            doc.fontSize(10).fillColor('#777').text('Documento gerado automaticamente pelo Sistema Acadêmico.', { align: 'center' });
+
+            doc.end();
         });
     });
 });

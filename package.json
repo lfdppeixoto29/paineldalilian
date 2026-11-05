@@ -9,8 +9,10 @@
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "pdfkit": "^0.20.2",
     "sqlite3": "^5.1.7"
   }
 }

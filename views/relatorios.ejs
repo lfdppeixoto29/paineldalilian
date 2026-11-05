@@ -247,7 +247,7 @@
             }
         });
 
-        function enviarRelatorioIndividual(tipo) {
+        async function enviarRelatorioIndividual(tipo) {
             const select = document.getElementById('selectAlunoIndividual');
             const alunoId = select.value;
             const nome = select.options[select.selectedIndex].dataset.nome;
@@ -261,15 +261,28 @@
             const trimestre = document.querySelector('select[name="trimestre"]')?.value || '1';
 
             if (tipo === 'whatsapp') {
-                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`);
-                
-                if (!tel) {
-                    const novoTel = prompt(`Informe o WhatsApp para ${nome}:`, "");
-                    if (!novoTel) return;
-                    window.open(`https://wa.me/55${novoTel.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                } else {
-                    window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
+                const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`;
+
+                try {
+                    const response = await fetch(`/api/gerar-pdf/${alunoId}`);
+                    const blob = await response.blob();
+                    const file = new File([blob], `boletim_${nome.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: 'Boletim Escolar',
+                            text: textoMsg,
+                            files: [file]
+                        });
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Share API fallback:', e);
                 }
+
+                const numeroDestino = tel || prompt(`Informe o WhatsApp para ${nome}:`, "");
+                if (!numeroDestino) return;
+                window.open(`https://wa.me/55${numeroDestino.replace(/\D/g, '')}?text=${encodeURIComponent(textoMsg)}`, '_blank');
             } else if (tipo === 'pdf') {
                 window.open(window.location.origin + `/aluno/${alunoId}`, '_blank');
             } else if (tipo === 'excel') {

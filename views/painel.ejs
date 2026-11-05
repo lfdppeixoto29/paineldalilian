@@ -345,14 +345,13 @@
             document.getElementById('qrCodePlaceholder').style.display = 'none';
         }
 
-        function enviarMensagemWhatsApp() {
+        async function enviarMensagemWhatsApp() {
             const tel = document.getElementById('inputTelefone').value.replace(/\D/g, '');
             if (!tel) {
                 alert('Por favor, informe o número do celular do responsável.');
                 return;
             }
 
-            // Captura a linha onde o botão foi clicado
             const btn = document.querySelector(`button[onclick*="'${alunoAtualParaWhats.id}'"]`);
             const tr = btn ? btn.closest('tr') : document.querySelector('table tbody tr');
             
@@ -362,9 +361,29 @@
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
             
-            const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`);
-            
-            const url = `https://wa.me/55${tel}?text=${msg}`;
+            const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`;
+
+            try {
+                // Tenta buscar o PDF gerado em memória pelo servidor e compartilhar diretamente
+                const response = await fetch(`/api/gerar-pdf/${alunoAtualParaWhats.id}`);
+                const blob = await response.blob();
+                const file = new File([blob], `boletim_${alunoAtualParaWhats.nome.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'Boletim Escolar',
+                        text: textoMsg,
+                        files: [file]
+                    });
+                    fecharModalWhatsApp();
+                    return;
+                }
+            } catch (e) {
+                console.log('Share API fallback:', e);
+            }
+
+            // Fallback para computadores / navegadores sem suporte a compartilhamento direto de arquivos
+            const url = `https://wa.me/55${tel}?text=${encodeURIComponent(textoMsg)}`;
             window.open(url, '_blank');
             fecharModalWhatsApp();
         }
