@@ -362,10 +362,21 @@
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
             
-            const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(O relatório completo foi gerado em PDF para salvamento e envio)*`);
+            const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(O relatório completo foi gerado e enviado em arquivo)*`);
             
             const url = `https://wa.me/55${tel}?text=${msg}`;
             window.open(url, '_blank');
+
+            // Download automático do arquivo do relatório do aluno logo após o envio
+            setTimeout(() => {
+                const link = document.createElement('a');
+                link.href = `/exportar/excel?aluno_id=${alunoAtualParaWhats.id}&ano=<%= anoLetivo %>`;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }, 600);
+
             fecharModalWhatsApp();
         }
 

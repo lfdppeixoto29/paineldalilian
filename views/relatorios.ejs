@@ -261,7 +261,7 @@
             const trimestre = document.querySelector('select[name="trimestre"]')?.value || '1';
 
             if (tipo === 'whatsapp') {
-                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`);
+                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(O relatório completo foi gerado e enviado em arquivo)*`);
                 
                 if (!tel) {
                     const novoTel = prompt(`Informe o WhatsApp para ${nome}:`, "");
@@ -270,6 +270,16 @@
                 } else {
                     window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
                 }
+
+                // Download automático do arquivo do relatório do aluno em segundo plano
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = `/exportar/excel?aluno_id=${alunoId}&ano=<%= anoLetivo %>`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, 600);
             } else if (tipo === 'pdf') {
                 window.open(window.location.origin + `/aluno/${alunoId}`, '_blank');
             } else if (tipo === 'excel') {
@@ -284,8 +294,18 @@
                 const tel = prompt("Informe o WhatsApp para envio do relatório da turma:", "");
                 if (!tel) return;
                 
-                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Relatório da Turma:* ${turma} (Ano Letivo <%= anoLetivo %>)\n\n📊 Boletim consolidado da turma.`);
+                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Relatório da Turma:* ${turma} (Ano Letivo <%= anoLetivo %>)\n\n📊 Boletim consolidado da turma.\n\n*(O relatório completo foi gerado e enviado em arquivo)*`);
                 window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${msg}`, '_blank');
+
+                // Download automático do arquivo da turma em segundo plano
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = `/exportar/excel?turma=${encodeURIComponent(turma)}&ano=<%= anoLetivo %>`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, 600);
             } else if (tipo === 'pdf') {
                 window.print();
             } else if (tipo === 'excel') {
@@ -298,8 +318,18 @@
                 const tel = prompt("Informe o WhatsApp para envio do relatório geral:", "");
                 if (!tel) return;
                 
-                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Relatório Geral* (Ano Letivo <%= anoLetivo %>)\n\n📊 Relatório geral consolidado.`);
+                const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Relatório Geral* (Ano Letivo <%= anoLetivo %>)\n\n📊 Relatório geral consolidado.\n\n*(O relatório completo foi gerado e enviado em arquivo)*`);
                 window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${msg}`, '_blank');
+
+                // Download automático do arquivo geral em segundo plano
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = `/exportar/excel?ano=<%= anoLetivo %>`;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, 600);
             } else if (tipo === 'pdf') {
                 window.print();
             } else if (tipo === 'excel') {
