@@ -369,6 +369,10 @@
             
             const url = `https://wa.me/55${tel}?text=${msg}`;
             window.open(url, '_blank');
+            
+            // Abre automaticamente a página do aluno para o professor poder salvar/imprimir em PDF
+            window.open(`${urlBase}/aluno/${alunoAtualParaWhats.id}`, '_blank');
+            
             fecharModalWhatsApp();
         }
     </script>
