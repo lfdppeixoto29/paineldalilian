@@ -361,7 +361,34 @@
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
             
-            const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`;
+            const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(Segue em anexo o arquivo PDF com o boletim completo)*`;
+
+            try {
+                const response = await fetch(`/api/gerar-pdf/${alunoAtualParaWhats.id}`);
+                const blob = await response.blob();
+                const file = new File([blob], `boletim_${alunoAtualParaWhats.nome.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'Boletim Escolar - Colégio Euclides Feliciano Tardin',
+                        text: textoMsg,
+                        files: [file]
+                    });
+                    fecharModalWhatsApp();
+                    return;
+                }
+            } catch (e) {
+                console.log('Share API fallback:', e);
+            }
+
+            // Fallback: Se o navegador não suportar compartilhamento direto de arquivos (ex: PC desktop),
+            // baixamos o PDF e abrimos o WhatsApp para o professor anexar manualmente com 1 clique.
+            const link = document.createElement('a');
+            link.href = `/api/gerar-pdf/${alunoAtualParaWhats.id}`;
+            link.download = `boletim_${alunoAtualParaWhats.nome.replace(/\s+/g, '_')}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
             const url = `https://wa.me/55${tel}?text=${encodeURIComponent(textoMsg)}`;
             window.open(url, '_blank');
