@@ -252,20 +252,28 @@
             const alunoId = select.value;
             const nome = select.options[select.selectedIndex].dataset.nome;
             const tel = select.options[select.selectedIndex].dataset.tel.replace(/\D/g, '');
-            const urlBase = window.location.origin;
-            const linkAluno = `${urlBase}/aluno/${alunoId}`;
+            
+            // Buscar dados da tabela para montar o resumo
+            const row = document.querySelector(`input[value="${alunoId}"]`)?.closest('tr');
+            const notaFinal = row ? row.querySelector('.lbl-final').textContent : 'N/A';
+            const status = row ? row.querySelector('.lbl-status').textContent.trim() : 'N/A';
+            const materia = document.querySelector('select[name="materia"]')?.value || 'Matéria';
+            const trimestre = document.querySelector('select[name="trimestre"]')?.value || '1';
 
             if (tipo === 'whatsapp') {
+                const msg = encodeURIComponent(`📢 *Boletim Individual - Colégio Euclides Feliciano Tardin*\n\n*Aluno:* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n*Nota Final:* ${notaFinal} - *${status}*\n\n*(Relatório gerado em PDF para salvamento)*`);
+                
                 if (!tel) {
                     const novoTel = prompt(`Informe o WhatsApp para ${nome}:`, "");
                     if (!novoTel) return;
-                    window.open(`https://wa.me/55${novoTel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório de Desempenho*\n\nOlá! Segue o link com o gráfico e histórico escolar de *${nome}*.\n\n🔗 Acesse aqui: ${linkAluno}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                    window.open(`https://wa.me/55${novoTel.replace(/\D/g, '')}?text=${msg}`, '_blank');
                 } else {
-                    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(`📊 *Relatório de Desempenho*\n\nOlá! Segue o link com o gráfico e histórico escolar de *${nome}*.\n\n🔗 Acesse aqui: ${linkAluno}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                    window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
                 }
+                // Abre a página do aluno para o professor poder salvar em PDF imediatamente
+                window.open(window.location.origin + `/aluno/${alunoId}`, '_blank');
             } else if (tipo === 'pdf') {
-                window.open(linkAluno, '_blank');
-                // O usuário pode imprimir/salvar em PDF na página do aluno
+                window.open(window.location.origin + `/aluno/${alunoId}`, '_blank');
             } else if (tipo === 'excel') {
                 window.location.href = `/exportar/excel?aluno_id=${alunoId}&ano=<%= anoLetivo %>`;
             }
@@ -273,13 +281,14 @@
 
         function enviarRelatorioTurma(tipo) {
             const turma = "<%= turmaFiltro %>";
-            const urlBase = window.location.origin;
-            const linkRelatorio = `${urlBase}/relatorios?turma=${encodeURIComponent(turma)}&ano=<%= anoLetivo %>`;
-
+            
             if (tipo === 'whatsapp') {
                 const tel = prompt("Informe o WhatsApp para envio do relatório da turma:", "");
                 if (!tel) return;
-                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório da Turma: ${turma}*\n\nConfira o desempenho geral, pódio e ranking da turma no link abaixo:\n\n🔗 ${linkRelatorio}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                
+                const msg = encodeURIComponent(`📊 *Relatório da Turma: ${turma}*\n\nO boletim consolidado da turma foi gerado em PDF.\n\n_Colégio Euclides Feliciano Tardin_`);
+                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                window.print();
             } else if (tipo === 'pdf') {
                 window.print();
             } else if (tipo === 'excel') {
@@ -288,13 +297,13 @@
         }
 
         function enviarRelatorioTodos(tipo) {
-            const urlBase = window.location.origin;
-            const linkGeral = `${urlBase}/relatorios?ano=<%= anoLetivo %>`;
-
             if (tipo === 'whatsapp') {
                 const tel = prompt("Informe o WhatsApp para envio do relatório geral:", "");
                 if (!tel) return;
-                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${encodeURIComponent(`📊 *Relatório Geral - Ano Letivo <%= anoLetivo %>*\n\nConfira o desempenho de todas as turmas e o ranking geral no link abaixo:\n\n🔗 ${linkGeral}\n\n_Colégio Euclides Feliciano Tardin_`)}`, '_blank');
+                
+                const msg = encodeURIComponent(`📊 *Relatório Geral - Ano Letivo <%= anoLetivo %>*\n\nO boletim consolidado de todas as turmas foi gerado em PDF.\n\n_Colégio Euclides Feliciano Tardin_`);
+                window.open(`https://wa.me/55${tel.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                window.print();
             } else if (tipo === 'pdf') {
                 window.print();
             } else if (tipo === 'excel') {
