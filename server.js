@@ -303,11 +303,12 @@ app.post('/materias/excluir', (req, res) => {
 
 app.get('/aluno/:id', (req, res) => {
     const alunoId = req.params.id;
+    const autoImprimir = req.query.imprimir === '1';
     db.get("SELECT * FROM alunos WHERE id = ?", [alunoId], (err, aluno) => {
         if (!aluno) return res.status(404).send("Aluno não encontrado.");
         
         db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], (err, notas) => {
-            res.render('aluno-detalhes', { aluno, notas: notas || [] });
+            res.render('aluno-detalhes', { aluno, notas: notas || [], autoImprimir });
         });
     });
 });

@@ -366,13 +366,6 @@
             
             const url = `https://wa.me/55${tel}?text=${msg}`;
             window.open(url, '_blank');
-            
-            // Regra automática: Abre o relatório completo em PDF imediatamente após abrir o WhatsApp
-            setTimeout(() => {
-                const urlBase = window.location.origin;
-                window.open(`${urlBase}/aluno/${alunoAtualParaWhats.id}`, '_blank');
-            }, 800);
-
             fecharModalWhatsApp();
         }
 
