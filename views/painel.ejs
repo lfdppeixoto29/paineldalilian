@@ -354,26 +354,33 @@
 
             // Captura a linha onde o botão foi clicado
             const btn = document.querySelector(`button[onclick*="'${alunoAtualParaWhats.id}'"]`);
-            const tr = btn.closest('tr');
+            const tr = btn ? btn.closest('tr') : document.querySelector('table tbody tr');
             
-            const notaFinal = tr.querySelector('.lbl-final').textContent;
-            const status = tr.querySelector('.lbl-status').textContent.trim();
+            const notaFinal = tr && tr.querySelector('.lbl-final') ? tr.querySelector('.lbl-final').textContent : '0.0';
+            const status = tr && tr.querySelector('.lbl-status') ? tr.querySelector('.lbl-status').textContent.trim() : 'REPROVADO';
             
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
             
-            const urlBase = window.location.origin;
-            const linkAluno = `${urlBase}/aluno/${alunoAtualParaWhats.id}`;
-
             const msg = encodeURIComponent(`📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(O relatório completo foi gerado em PDF para salvamento e envio)*`);
             
             const url = `https://wa.me/55${tel}?text=${msg}`;
             window.open(url, '_blank');
             
-            // Abre automaticamente a página do aluno para o professor poder salvar/imprimir em PDF
-            window.open(`${urlBase}/aluno/${alunoAtualParaWhats.id}`, '_blank');
-            
+            // Regra automática: Abre o relatório completo em PDF imediatamente após abrir o WhatsApp
+            setTimeout(() => {
+                const urlBase = window.location.origin;
+                window.open(`${urlBase}/aluno/${alunoAtualParaWhats.id}`, '_blank');
+            }, 800);
+
             fecharModalWhatsApp();
+        }
+
+        function abrirPdfAluno() {
+            if (alunoAtualParaWhats && alunoAtualParaWhats.id) {
+                const urlBase = window.location.origin;
+                window.open(`${urlBase}/aluno/${alunoAtualParaWhats.id}`, '_blank');
+            }
         }
     </script>
     
