@@ -54,6 +54,7 @@
 ## Nota de implementação (11/11/2026)
 
 O Render Free não tem disco persistente, então os PDFs **não** foram salvos em `public/pdfs`.
-Foram armazenados na tabela `pdfs` do Turso (base64) e servidos por `GET /pdf/:token`,
+Foram armazenados na tabela `pdf_links` do Turso (base64) e servidos por `GET /pdf/:token`,
 o que mantém os links válidos mesmo após deploy/restart. Validade padrão: 7 dias
-(ajustável por `PDF_LINK_TTL_DIAS`).
+(ajustável por `PDF_LINK_TTL_DIAS`). A tabela `pdfs` que já existia no Turso é legada
+(schema antigo, vazia) e não é utilizada.

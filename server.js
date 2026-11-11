@@ -83,7 +83,8 @@ function initDb() {
         )`);
 
         // PDFs publicados no servidor para download via link (WhatsApp)
-        db.run(`CREATE TABLE IF NOT EXISTS pdfs (
+        // Nome proprio para nao conflitar com a tabela legada "pdfs" (schema antigo).
+        db.run(`CREATE TABLE IF NOT EXISTS pdf_links (
             token TEXT PRIMARY KEY,
             aluno_id INTEGER,
             nome_arquivo TEXT NOT NULL,
@@ -91,8 +92,8 @@ function initDb() {
             criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
             expira_em TEXT NOT NULL
         )`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_expira_em ON pdfs (expira_em)`);
-        db.run(`DELETE FROM pdfs WHERE expira_em < ?`, [new Date().toISOString()]);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_links_expira_em ON pdf_links (expira_em)`);
+        db.run(`DELETE FROM pdf_links WHERE expira_em < ?`, [new Date().toISOString()]);
 
         // Atualizar registros sem ano_letivo para '2026'
         db.run(`UPDATE alunos SET ano_letivo = '2026' WHERE ano_letivo IS NULL`);
@@ -404,7 +405,7 @@ function obterUrlPublica(req) {
 }
 
 function limparPdfsExpirados() {
-    db.run("DELETE FROM pdfs WHERE expira_em < ?", [new Date().toISOString()], (err) => {
+    db.run("DELETE FROM pdf_links WHERE expira_em < ?", [new Date().toISOString()], (err) => {
         if (err) console.error('Erro ao limpar PDFs expirados:', err);
     });
 }
@@ -448,7 +449,7 @@ function criarLinkPdf(req, res) {
                 const expiraEm = new Date(agora.getTime() + PDF_LINK_TTL_DIAS * 24 * 60 * 60 * 1000).toISOString();
 
                 db.run(
-                    "INSERT INTO pdfs (token, aluno_id, nome_arquivo, conteudo, criado_em, expira_em) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO pdf_links (token, aluno_id, nome_arquivo, conteudo, criado_em, expira_em) VALUES (?, ?, ?, ?, ?, ?)",
                     [token, aluno.id, nomeArquivo, buffer.toString('base64'), agora.toISOString(), expiraEm],
                     (err3) => {
                         if (err3) {
@@ -485,7 +486,7 @@ app.get('/pdf/:token', (req, res) => {
     const token = String(req.params.token || '');
     if (!/^[a-f0-9]{32}$/.test(token)) return res.status(400).send('Link inválido.');
 
-    db.get("SELECT nome_arquivo, conteudo, expira_em FROM pdfs WHERE token = ?", [token], (err, row) => {
+    db.get("SELECT nome_arquivo, conteudo, expira_em FROM pdf_links WHERE token = ?", [token], (err, row) => {
         if (err) {
             console.error('Erro ao buscar PDF', token, err);
             return res.status(500).send('Erro ao buscar o arquivo.');
@@ -493,7 +494,7 @@ app.get('/pdf/:token', (req, res) => {
         if (!row) return res.status(404).send('Arquivo não encontrado. Peça um novo link à professora.');
 
         if (row.expira_em && new Date(row.expira_em).getTime() < Date.now()) {
-            db.run("DELETE FROM pdfs WHERE token = ?", [token]);
+            db.run("DELETE FROM pdf_links WHERE token = ?", [token]);
             return res.status(410).send('Este link expirou. Peça um novo link à professora.');
         }
 
