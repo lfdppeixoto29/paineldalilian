@@ -1,10 +1,17 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const crypto = require('crypto');
 const PDFDocument = require('pdfkit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Quantos dias o link publico do PDF continua valido (padrao: 7 dias)
+const PDF_LINK_TTL_DIAS = Math.max(1, parseInt(process.env.PDF_LINK_TTL_DIAS || '7', 10) || 7);
+
+// Necessario para identificar https atras do proxy do Render
+app.set('trust proxy', true);
 
 process.chdir(__dirname);
 
@@ -74,6 +81,18 @@ function initDb() {
             conteudo TEXT NOT NULL,
             data TEXT DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        // PDFs publicados no servidor para download via link (WhatsApp)
+        db.run(`CREATE TABLE IF NOT EXISTS pdfs (
+            token TEXT PRIMARY KEY,
+            aluno_id INTEGER,
+            nome_arquivo TEXT NOT NULL,
+            conteudo TEXT NOT NULL,
+            criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
+            expira_em TEXT NOT NULL
+        )`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_expira_em ON pdfs (expira_em)`);
+        db.run(`DELETE FROM pdfs WHERE expira_em < ?`, [new Date().toISOString()]);
 
         // Atualizar registros sem ano_letivo para '2026'
         db.run(`UPDATE alunos SET ano_letivo = '2026' WHERE ano_letivo IS NULL`);
@@ -314,16 +333,15 @@ app.get('/aluno/:id', (req, res) => {
     });
 });
 
-app.get('/api/gerar-pdf/:id', (req, res) => {
-    const alunoId = req.params.id;
-    db.get("SELECT * FROM alunos WHERE id = ?", [alunoId], (err, aluno) => {
-        if (!aluno) return res.status(404).send("Aluno não encontrado.");
-
-        db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], (err, notas) => {
+// Gera o PDF do aluno em memoria (usado pelo download direto e pelo link publico)
+function gerarPdfBuffer(aluno, notas) {
+    return new Promise((resolve, reject) => {
+        try {
             const doc = new PDFDocument({ margin: 50 });
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `inline; filename=boletim_${aluno.nome.replace(/\s+/g, '_')}.pdf`);
-            doc.pipe(res);
+            const partes = [];
+            doc.on('data', (parte) => partes.push(parte));
+            doc.on('end', () => resolve(Buffer.concat(partes)));
+            doc.on('error', reject);
 
             // Cabeçalho
             doc.fontSize(18).fillColor('#1e3c72').text('Colégio Estadual Euclides Feliciano Tardin', { align: 'center' });
@@ -359,7 +377,136 @@ app.get('/api/gerar-pdf/:id', (req, res) => {
             doc.fontSize(10).fillColor('#777').text('Documento gerado automaticamente pelo Sistema Acadêmico.', { align: 'center' });
 
             doc.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+// Nome de arquivo seguro (sem acentos, espacos ou caracteres especiais)
+function nomeArquivoSeguro(nome, matricula) {
+    const base = `boletim_${nome || 'aluno'}_${matricula || ''}`
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+    const limpo = base
+        .replace(/[^A-Za-z0-9._-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+    return `${limpo || 'boletim'}.pdf`;
+}
+
+// Endereco publico do servidor (para montar o link enviado no WhatsApp)
+function obterUrlPublica(req) {
+    const configurada = process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL;
+    if (configurada) return String(configurada).replace(/\/+$/, '');
+    const protocolo = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+    return `${protocolo}://${req.get('host')}`;
+}
+
+function limparPdfsExpirados() {
+    db.run("DELETE FROM pdfs WHERE expira_em < ?", [new Date().toISOString()], (err) => {
+        if (err) console.error('Erro ao limpar PDFs expirados:', err);
+    });
+}
+
+// Visualizar/baixar o PDF do aluno na hora (sem publicar link)
+app.get('/api/gerar-pdf/:id', (req, res) => {
+    const alunoId = req.params.id;
+    db.get("SELECT * FROM alunos WHERE id = ?", [alunoId], (err, aluno) => {
+        if (!aluno) return res.status(404).send("Aluno não encontrado.");
+
+        db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], async (err2, notas) => {
+            try {
+                const buffer = await gerarPdfBuffer(aluno, notas || []);
+                const nomeArquivo = nomeArquivoSeguro(aluno.nome, aluno.matricula);
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `inline; filename="${nomeArquivo}"`);
+                res.setHeader('Content-Length', buffer.length);
+                res.send(buffer);
+            } catch (e) {
+                console.error('Erro ao gerar PDF do aluno', alunoId, e);
+                res.status(500).send('Erro ao gerar o PDF.');
+            }
         });
+    });
+});
+
+// Publica o PDF no servidor e devolve um link publico para enviar no WhatsApp
+function criarLinkPdf(req, res) {
+    const alunoId = req.params.id;
+    db.get("SELECT * FROM alunos WHERE id = ?", [alunoId], (err, aluno) => {
+        if (err || !aluno) return res.status(404).json({ erro: 'Aluno não encontrado.' });
+
+        db.all("SELECT * FROM notas WHERE aluno_id = ?", [alunoId], async (err2, notas) => {
+            if (err2) return res.status(500).json({ erro: 'Erro ao consultar as notas do aluno.' });
+
+            try {
+                const buffer = await gerarPdfBuffer(aluno, notas || []);
+                const token = crypto.randomBytes(16).toString('hex');
+                const nomeArquivo = nomeArquivoSeguro(aluno.nome, aluno.matricula);
+                const agora = new Date();
+                const expiraEm = new Date(agora.getTime() + PDF_LINK_TTL_DIAS * 24 * 60 * 60 * 1000).toISOString();
+
+                db.run(
+                    "INSERT INTO pdfs (token, aluno_id, nome_arquivo, conteudo, criado_em, expira_em) VALUES (?, ?, ?, ?, ?, ?)",
+                    [token, aluno.id, nomeArquivo, buffer.toString('base64'), agora.toISOString(), expiraEm],
+                    (err3) => {
+                        if (err3) {
+                            console.error('Erro ao salvar PDF no banco:', err3);
+                            return res.status(500).json({ erro: 'Não foi possível publicar o PDF no servidor.' });
+                        }
+
+                        const caminho = `/pdf/${token}`;
+                        res.json({
+                            url: `${obterUrlPublica(req)}${caminho}`,
+                            caminho,
+                            token,
+                            nome_arquivo: nomeArquivo,
+                            tamanho: buffer.length,
+                            expira_em: expiraEm
+                        });
+
+                        limparPdfsExpirados();
+                    }
+                );
+            } catch (e) {
+                console.error('Erro ao gerar PDF para link', alunoId, e);
+                res.status(500).json({ erro: 'Erro ao gerar o PDF.' });
+            }
+        });
+    });
+}
+
+app.post('/api/criar-pdf-url/:id', criarLinkPdf);
+app.get('/api/criar-pdf-url/:id', criarLinkPdf);
+
+// Download publico do PDF a partir do token (link enviado ao responsavel)
+app.get('/pdf/:token', (req, res) => {
+    const token = String(req.params.token || '');
+    if (!/^[a-f0-9]{32}$/.test(token)) return res.status(400).send('Link inválido.');
+
+    db.get("SELECT nome_arquivo, conteudo, expira_em FROM pdfs WHERE token = ?", [token], (err, row) => {
+        if (err) {
+            console.error('Erro ao buscar PDF', token, err);
+            return res.status(500).send('Erro ao buscar o arquivo.');
+        }
+        if (!row) return res.status(404).send('Arquivo não encontrado. Peça um novo link à professora.');
+
+        if (row.expira_em && new Date(row.expira_em).getTime() < Date.now()) {
+            db.run("DELETE FROM pdfs WHERE token = ?", [token]);
+            return res.status(410).send('Este link expirou. Peça um novo link à professora.');
+        }
+
+        const buffer = Buffer.from(row.conteudo, 'base64');
+        const nomeOriginal = row.nome_arquivo || 'boletim.pdf';
+        const nomeAscii = String(nomeOriginal).replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${nomeAscii}"; filename*=UTF-8''${encodeURIComponent(nomeOriginal)}`);
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+        res.send(buffer);
     });
 });
 

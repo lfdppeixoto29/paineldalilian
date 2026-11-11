@@ -261,23 +261,17 @@
             const trimestre = document.querySelector('select[name="trimestre"]')?.value || '1';
 
             if (tipo === 'whatsapp') {
-                const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`;
+                const textoBase = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*`;
+                let textoMsg = textoBase;
 
                 try {
-                    const response = await fetch(`/api/gerar-pdf/${alunoId}`);
-                    const blob = await response.blob();
-                    const file = new File([blob], `boletim_${nome.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
-
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({
-                            title: 'Boletim Escolar',
-                            text: textoMsg,
-                            files: [file]
-                        });
-                        return;
-                    }
+                    const resp = await fetch(`/api/criar-pdf-url/${alunoId}`, { method: 'POST' });
+                    if (!resp.ok) throw new Error(await resp.text().catch(() => ''));
+                    const dados = await resp.json();
+                    textoMsg += `\n\n📄 *Boletim completo em PDF:*\n${dados.url}\n\n_Toque no link para baixar o arquivo._`;
                 } catch (e) {
-                    console.log('Share API fallback:', e);
+                    console.error('Erro ao gerar link do PDF:', e);
+                    alert('Não foi possível gerar o link do PDF agora. A mensagem será enviada sem o link.');
                 }
 
                 const numeroDestino = tel || prompt(`Informe o WhatsApp para ${nome}:`, "");

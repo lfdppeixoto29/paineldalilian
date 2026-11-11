@@ -326,20 +326,56 @@
             document.getElementById('modalWhatsApp').style.display = 'none';
         }
 
-        function gerarQrCodeWhatsApp() {
-            const tel = document.getElementById('inputTelefone').value.replace(/\D/g, '');
-            const tr = event.target.closest('tr') || document.querySelector('table tbody tr');
-            // Pegar matéria e trimestre atuais dos selects de filtro
+        function obterContextoMensagem() {
+            const btn = document.querySelector(`button[onclick*="'${alunoAtualParaWhats.id}'"]`);
+            const tr = btn ? btn.closest('tr') : document.querySelector('table tbody tr');
+
+            const notaFinal = tr && tr.querySelector('.lbl-final') ? tr.querySelector('.lbl-final').textContent : '0.0';
+            const status = tr && tr.querySelector('.lbl-status') ? tr.querySelector('.lbl-status').textContent.trim() : 'REPROVADO';
             const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
             const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
-            
-            // Simular mensagem para o QR Code (wa.me link codificado em QR)
-            const mensagem = encodeURIComponent(`Boletim de ${alunoAtualParaWhats.nome} (${materia} - ${trimestre}ºT). Colégio Euclides Feliciano Tardin.`);
-            const urlWa = tel ? `https://wa.me/55${tel}?text=${mensagem}` : `https://wa.me/?text=${mensagem}`;
-            
+
+            return { notaFinal, status, materia, trimestre };
+        }
+
+        // Publica o PDF no servidor e devolve o link publico de download
+        async function gerarLinkPdf(alunoId) {
+            const resp = await fetch(`/api/criar-pdf-url/${alunoId}`, { method: 'POST' });
+            if (!resp.ok) {
+                const detalhe = await resp.text().catch(() => '');
+                throw new Error(detalhe || 'Falha ao gerar o link do PDF');
+            }
+            return await resp.json();
+        }
+
+        async function montarTextoWhatsApp(incluirLink) {
+            const ctx = obterContextoMensagem();
+            let texto = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${ctx.materia} (${ctx.trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${ctx.notaFinal} - *${ctx.status}*`;
+
+            if (incluirLink) {
+                try {
+                    const dados = await gerarLinkPdf(alunoAtualParaWhats.id);
+                    texto += `\n\n📄 *Boletim completo em PDF:*\n${dados.url}\n\n_Toque no link para baixar o arquivo._`;
+                } catch (e) {
+                    console.error('Erro ao gerar link do PDF:', e);
+                    alert('Não foi possível gerar o link do PDF agora. A mensagem será enviada sem o link.');
+                }
+            }
+
+            return texto;
+        }
+
+        async function gerarQrCodeWhatsApp() {
+            const tel = document.getElementById('inputTelefone').value.replace(/\D/g, '');
+            const texto = await montarTextoWhatsApp(true);
+
+            const urlWa = tel
+                ? `https://wa.me/55${tel}?text=${encodeURIComponent(texto)}`
+                : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+
             // Gerar QR Code via API pública do qrserver
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(urlWa)}`;
-            
+
             document.getElementById('qrCodeImg').src = qrUrl;
             document.getElementById('qrCodeImg').style.display = 'inline-block';
             document.getElementById('qrCodePlaceholder').style.display = 'none';
@@ -352,47 +388,22 @@
                 return;
             }
 
-            const btn = document.querySelector(`button[onclick*="'${alunoAtualParaWhats.id}'"]`);
-            const tr = btn ? btn.closest('tr') : document.querySelector('table tbody tr');
-            
-            const notaFinal = tr && tr.querySelector('.lbl-final') ? tr.querySelector('.lbl-final').textContent : '0.0';
-            const status = tr && tr.querySelector('.lbl-status') ? tr.querySelector('.lbl-status').textContent.trim() : 'REPROVADO';
-            
-            const materia = document.querySelector('select[name="materia"]') ? document.querySelector('select[name="materia"]').value : 'Matéria';
-            const trimestre = document.querySelector('select[name="trimestre"]') ? document.querySelector('select[name="trimestre"]').value : '1';
-            
-            const textoMsg = `📢 *Comunicado - Colégio Euclides Feliciano Tardin*\n\n*Aluno(a):* ${alunoAtualParaWhats.nome}\n*Matéria:* ${materia} (${trimestre}º Trimestre)\n\n📊 *Desempenho:* Nota ${notaFinal} - *${status}*\n\n*(Segue em anexo o arquivo PDF com o boletim completo)*`;
-
-            try {
-                const response = await fetch(`/api/gerar-pdf/${alunoAtualParaWhats.id}`);
-                const blob = await response.blob();
-                const file = new File([blob], `boletim_${alunoAtualParaWhats.nome.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
-
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        title: 'Boletim Escolar - Colégio Euclides Feliciano Tardin',
-                        text: textoMsg,
-                        files: [file]
-                    });
-                    fecharModalWhatsApp();
-                    return;
-                }
-            } catch (e) {
-                console.log('Share API fallback:', e);
+            const botao = document.querySelector('#modalWhatsApp button.btn-success');
+            if (botao) {
+                botao.disabled = true;
+                botao.textContent = '⏳ Gerando link...';
             }
 
-            // Fallback: Se o navegador não suportar compartilhamento direto de arquivos (ex: PC desktop),
-            // baixamos o PDF e abrimos o WhatsApp para o professor anexar manualmente com 1 clique.
-            const link = document.createElement('a');
-            link.href = `/api/gerar-pdf/${alunoAtualParaWhats.id}`;
-            link.download = `boletim_${alunoAtualParaWhats.nome.replace(/\s+/g, '_')}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            const url = `https://wa.me/55${tel}?text=${encodeURIComponent(textoMsg)}`;
-            window.open(url, '_blank');
-            fecharModalWhatsApp();
+            try {
+                const textoMsg = await montarTextoWhatsApp(true);
+                window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(textoMsg)}`, '_blank');
+                fecharModalWhatsApp();
+            } finally {
+                if (botao) {
+                    botao.disabled = false;
+                    botao.textContent = '🚀 Enviar Mensagem';
+                }
+            }
         }
 
         function abrirPdfAluno() {
