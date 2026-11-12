@@ -72,7 +72,7 @@ Atualizado em: 22/10/2026
 2. **Inclusão de aluno (`/aluno/adicionar`)** — gera matrícula automática e notas zeradas; antes falhava silenciosamente por causa da coluna `matricula NOT NULL`.
 3. **Resiliência** — keep-alive via GitHub Actions (`*/10 * * * *`), retry no banco, handlers globais de erro no Express.
 4. **Persistência real** — Turso, validada com criação/exclusão de aluno + restart do serviço.
-5. **PDF do aluno por link no WhatsApp** — ao clicar em "Enviar WhatsApp", o servidor gera o PDF, guarda em `pdf_links` (Turso) com token de 128 bits e devolve um link público `https://<domínio>/pdf/<token>`. O link vai dentro da mensagem do WhatsApp; o responsável baixa o arquivo direto, sem nada salvo no dispositivo da professora. Validade padrão de 7 dias (`PDF_LINK_TTL_DIAS`), limpeza automática dos expirados e download com `Content-Disposition: attachment`.
+5. **PDF do aluno por link no WhatsApp** — ao clicar em "Enviar WhatsApp", o servidor gera o PDF, guarda em `pdf_links` (Turso) com token de 128 bits e devolve um link público `https://<domínio>/pdf/<token>`. O link vai dentro da mensagem do WhatsApp; o responsável baixa o arquivo direto, sem nada salvo no dispositivo da professora. O PDF tem layout profissional: faixa institucional, cartão do aluno, indicadores (média, situação, faltas, matérias), tabela de notas com status colorido e **gráfico de barras por matéria** no final. Validade padrão de 7 dias (`PDF_LINK_TTL_DIAS`), limpeza automática dos expirados e download com `Content-Disposition: attachment`.
 
 ---
 

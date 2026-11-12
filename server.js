@@ -334,48 +334,332 @@ app.get('/aluno/:id', (req, res) => {
     });
 });
 
+// ---------------------------------------------------------------------------
+// Geracao do PDF do aluno (visual profissional + grafico de desempenho)
+// ---------------------------------------------------------------------------
+const PDF_CORES = {
+    primaria: '#1e3c72',
+    primariaClara: '#2a5298',
+    destaque: '#2e86de',
+    sucesso: '#1e8449',
+    perigo: '#c0392b',
+    texto: '#2c3e50',
+    suave: '#7f8c8d',
+    linha: '#dbe4ee',
+    fundo: '#f4f7fb',
+    zebra: '#f9fbfd',
+    branco: '#ffffff'
+};
+
+function notaFinalPdf(n) {
+    const maior = Math.max(Number(n.avaliacao1) || 0, Number(n.avaliacao2) || 0);
+    const trabalhos = (Number(n.trabalho1) || 0) + (Number(n.trabalho2) || 0) + (Number(n.trabalho3) || 0);
+    const participacao = Number(n.participacao) || 0;
+    return Math.min(10, maior + trabalhos + participacao);
+}
+
+function formatarNotaPdf(valor) {
+    return (Number(valor) || 0).toFixed(1).replace('.', ',');
+}
+
+function dataBrPdf(data) {
+    const d = data || new Date();
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
+function truncarPdf(texto, max) {
+    const t = String(texto == null ? '' : texto);
+    return t.length > max ? `${t.slice(0, Math.max(1, max - 3)).trimEnd()}...` : t;
+}
+
+function calcularResumoPdf(notas) {
+    const lista = (notas || []).map((n) => ({
+        materia: n.materia || 'N/A',
+        trimestre: n.trimestre,
+        av1: Number(n.avaliacao1) || 0,
+        av2: Number(n.avaliacao2) || 0,
+        trabalhos: (Number(n.trabalho1) || 0) + (Number(n.trabalho2) || 0) + (Number(n.trabalho3) || 0),
+        participacao: Number(n.participacao) || 0,
+        faltas: Number(n.faltas) || 0,
+        final: notaFinalPdf(n)
+    }));
+
+    lista.sort((a, b) => String(a.materia).localeCompare(String(b.materia), 'pt-BR') || (Number(a.trimestre) || 0) - (Number(b.trimestre) || 0));
+
+    const total = lista.length;
+    const mediaGeral = total ? lista.reduce((soma, n) => soma + n.final, 0) / total : 0;
+    const faltas = lista.reduce((soma, n) => soma + n.faltas, 0);
+    const materias = new Set(lista.map((n) => n.materia));
+
+    const porMateria = {};
+    lista.forEach((n) => {
+        if (!porMateria[n.materia]) porMateria[n.materia] = { materia: n.materia, soma: 0, quantidade: 0 };
+        porMateria[n.materia].soma += n.final;
+        porMateria[n.materia].quantidade += 1;
+    });
+    const grafico = Object.values(porMateria)
+        .map((m) => ({ materia: m.materia, media: m.soma / m.quantidade }))
+        .sort((a, b) => String(a.materia).localeCompare(String(b.materia), 'pt-BR'));
+
+    return { lista, mediaGeral, faltas, totalMaterias: materias.size, grafico };
+}
+
+function desenharGraficoPdf(doc, dados, x, y, largura, altura) {
+    const baseY = y + altura;
+    const eixoX = x + 30;
+    const larguraPlot = largura - 30;
+
+    doc.save();
+
+    // Grade horizontal e escala de 0 a 10
+    doc.lineWidth(0.5).strokeColor(PDF_CORES.linha);
+    for (let valor = 0; valor <= 10; valor += 2) {
+        const gy = baseY - (valor / 10) * altura;
+        doc.moveTo(eixoX, gy).lineTo(eixoX + larguraPlot, gy).stroke();
+        doc.font('Helvetica').fontSize(7).fillColor(PDF_CORES.suave)
+            .text(String(valor), x, gy - 3.5, { width: 22, align: 'right', lineBreak: false });
+    }
+
+    // Linha de referencia (media minima 5,0)
+    const yRef = baseY - 0.5 * altura;
+    doc.dash(3, { space: 3 }).strokeColor(PDF_CORES.destaque).lineWidth(0.9)
+        .moveTo(eixoX, yRef).lineTo(eixoX + larguraPlot, yRef).stroke().undash();
+
+    const quantidade = Math.max(1, dados.length);
+    const espaco = quantidade > 8 ? 6 : 20;
+    const larguraBarra = Math.max(12, Math.min(48, (larguraPlot - espaco * (quantidade + 1)) / quantidade));
+    const larguraTotal = larguraBarra * quantidade + espaco * (quantidade - 1);
+    const inicio = eixoX + (larguraPlot - larguraTotal) / 2;
+
+    dados.forEach((item, indice) => {
+        const media = Math.max(0, Math.min(10, Number(item.media) || 0));
+        const alturaBarra = (media / 10) * altura;
+        const bx = inicio + indice * (larguraBarra + espaco);
+        const by = baseY - alturaBarra;
+        const cor = media >= 5 ? PDF_CORES.sucesso : PDF_CORES.perigo;
+
+        doc.roundedRect(bx, by, larguraBarra, alturaBarra, 2).fill(cor);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_CORES.texto)
+            .text(formatarNotaPdf(media), bx - 8, by - 12, { width: larguraBarra + 16, align: 'center', lineBreak: false });
+        doc.font('Helvetica').fontSize(7).fillColor(PDF_CORES.suave)
+            .text(truncarPdf(item.materia, 16), bx - 18, baseY + 5, { width: larguraBarra + 36, align: 'center', lineBreak: false });
+    });
+
+    // Rotulo da linha de referencia (desenhado por ultimo para ficar por cima das barras)
+    doc.font('Helvetica').fontSize(7).fillColor(PDF_CORES.destaque)
+        .text('Média mínima 5,0', eixoX + larguraPlot - 82, yRef - 11, { width: 82, align: 'right', lineBreak: false });
+
+    doc.restore();
+}
+
 // Gera o PDF do aluno em memoria (usado pelo download direto e pelo link publico)
 function gerarPdfBuffer(aluno, notas) {
     return new Promise((resolve, reject) => {
         try {
-            const doc = new PDFDocument({ margin: 50 });
+            const doc = new PDFDocument({
+                size: 'A4',
+                margin: 40,
+                bufferPages: true,
+                info: {
+                    Title: `Boletim - ${aluno.nome}`,
+                    Author: 'Colégio Estadual Euclides Feliciano Tardin',
+                    Subject: 'Relatório de Desempenho Escolar'
+                }
+            });
             const partes = [];
             doc.on('data', (parte) => partes.push(parte));
             doc.on('end', () => resolve(Buffer.concat(partes)));
             doc.on('error', reject);
 
-            // Cabeçalho
-            doc.fontSize(18).fillColor('#1e3c72').text('Colégio Estadual Euclides Feliciano Tardin', { align: 'center' });
-            doc.fontSize(12).fillColor('#555').text('Relatório de Desempenho Escolar', { align: 'center' });
-            doc.moveDown(1.5);
+            const largura = doc.page.width;
+            const altura = doc.page.height;
+            const margem = 40;
+            const conteudo = largura - margem * 2;
+            const resumo = calcularResumoPdf(notas);
+            const emitidoEm = dataBrPdf(new Date());
 
-            // Dados do Aluno
-            doc.fontSize(12).fillColor('#000').text(`Aluno(a): ${aluno.nome}`);
-            doc.text(`Matrícula: ${aluno.matricula} | Turma: ${aluno.turma}`);
-            doc.text(`Responsável: ${aluno.responsavel || 'Não informado'} | Telefone: ${aluno.telefone || 'Não informado'}`);
-            doc.moveDown(1.5);
+            // ---- Faixa de cabecalho ----
+            doc.rect(0, 0, largura, 92).fill(PDF_CORES.primaria);
+            doc.rect(0, 92, largura, 4).fill(PDF_CORES.destaque);
+            doc.font('Helvetica-Bold').fontSize(16).fillColor(PDF_CORES.branco)
+                .text('Colégio Estadual Euclides Feliciano Tardin', margem, 24, { width: conteudo, align: 'center', lineBreak: false });
+            doc.font('Helvetica').fontSize(10).fillColor('#cfe0ff')
+                .text(`Relatório de Desempenho Escolar • Ano Letivo ${aluno.ano_letivo || '2026'}`, margem, 50, { width: conteudo, align: 'center', lineBreak: false });
+            doc.font('Helvetica').fontSize(8).fillColor('#9fc0ff')
+                .text(`Emitido em ${emitidoEm}`, margem, 68, { width: conteudo, align: 'center', lineBreak: false });
 
-            // Tabela de Notas
-            doc.fontSize(14).fillColor('#1e3c72').text('Histórico de Notas e Frequência', { underline: true });
-            doc.moveDown(0.8);
+            // ---- Cartao do aluno ----
+            const cardY = 116;
+            doc.roundedRect(margem, cardY, conteudo, 82, 8).fillAndStroke(PDF_CORES.fundo, PDF_CORES.linha);
+            doc.roundedRect(margem, cardY, 5, 82, 2.5).fill(PDF_CORES.destaque);
+            doc.font('Helvetica-Bold').fontSize(13).fillColor(PDF_CORES.texto)
+                .text(aluno.nome || 'Aluno', margem + 18, cardY + 12, { width: conteudo - 36, lineBreak: false });
+            doc.font('Helvetica').fontSize(9).fillColor(PDF_CORES.suave)
+                .text(`Matrícula: ${aluno.matricula || '-'}    •    Turma: ${aluno.turma || '-'}`, margem + 18, cardY + 36, { width: conteudo - 36, lineBreak: false });
+            doc.text(`Responsável: ${aluno.responsavel || 'Não informado'}    •    Telefone: ${aluno.telefone || 'Não informado'}`, margem + 18, cardY + 54, { width: conteudo - 36, lineBreak: false });
 
-            (notas || []).forEach((n, idx) => {
-                const av1 = n.avaliacao1 || 0;
-                const av2 = n.avaliacao2 || 0;
-                const maior = Math.max(av1, av2);
-                const trabalhos = (n.trabalho1 || 0) + (n.trabalho2 || 0) + (n.trabalho3 || 0);
-                const part = n.participacao || 0;
-                const final = Math.min(10, maior + trabalhos + part).toFixed(1);
-                const status = final >= 5.0 ? 'APROVADO' : 'REPROVADO';
-
-                doc.fontSize(11).fillColor('#333').text(`${idx + 1}. Matéria: ${n.materia} (${n.trimestre}º Trimestre)`);
-                doc.text(`   Av1: ${av1} | Av2: ${av2} (Maior: ${maior}) | Trabalhos: ${trabalhos} | Part: ${part} | Faltas: ${n.faltas || 0}`);
-                doc.text(`   Nota Final: ${final} - Status: ${status}`);
-                doc.moveDown(0.5);
+            // ---- Indicadores ----
+            const kpiY = 214;
+            const kpiAltura = 58;
+            const kpiEspaco = 10;
+            const kpiLargura = (conteudo - kpiEspaco * 3) / 4;
+            const situacao = resumo.mediaGeral >= 5 ? 'APROVADO' : 'RECUPERAÇÃO';
+            const corSituacao = resumo.mediaGeral >= 5 ? PDF_CORES.sucesso : PDF_CORES.perigo;
+            const kpis = [
+                { rotulo: 'MÉDIA GERAL', valor: formatarNotaPdf(resumo.mediaGeral), cor: corSituacao },
+                { rotulo: 'SITUAÇÃO', valor: situacao, cor: corSituacao },
+                { rotulo: 'FALTAS REGISTRADAS', valor: String(resumo.faltas), cor: PDF_CORES.texto },
+                { rotulo: 'MATÉRIAS', valor: String(resumo.totalMaterias), cor: PDF_CORES.texto }
+            ];
+            kpis.forEach((kpi, i) => {
+                const kx = margem + i * (kpiLargura + kpiEspaco);
+                doc.roundedRect(kx, kpiY, kpiLargura, kpiAltura, 6).fillAndStroke(PDF_CORES.branco, PDF_CORES.linha);
+                doc.font('Helvetica').fontSize(7).fillColor(PDF_CORES.suave)
+                    .text(kpi.rotulo, kx + 8, kpiY + 10, { width: kpiLargura - 16, align: 'center', lineBreak: false });
+                doc.font('Helvetica-Bold').fontSize(kpi.rotulo === 'SITUAÇÃO' ? 10 : 16).fillColor(kpi.cor)
+                    .text(kpi.valor, kx + 8, kpiY + 27, { width: kpiLargura - 16, align: 'center', lineBreak: false });
             });
 
-            doc.moveDown(2);
-            doc.fontSize(10).fillColor('#777').text('Documento gerado automaticamente pelo Sistema Acadêmico.', { align: 'center' });
+            // ---- Tabela ----
+            const tabelaY = 296;
+            doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_CORES.primaria)
+                .text('Detalhamento das notas', margem, tabelaY, { lineBreak: false });
+            doc.font('Helvetica').fontSize(8).fillColor(PDF_CORES.suave)
+                .text('Nota final = maior avaliação + trabalhos + participação', margem, tabelaY + 16, { lineBreak: false });
+
+            const colunas = [
+                { chave: 'materia', titulo: 'Matéria', x: margem, largura: 145, alinhamento: 'left' },
+                { chave: 'trimestre', titulo: 'Trim.', x: margem + 145, largura: 38, alinhamento: 'center' },
+                { chave: 'av1', titulo: 'Av1', x: margem + 183, largura: 40, alinhamento: 'center' },
+                { chave: 'av2', titulo: 'Av2', x: margem + 223, largura: 40, alinhamento: 'center' },
+                { chave: 'trabalhos', titulo: 'Trab.', x: margem + 263, largura: 42, alinhamento: 'center' },
+                { chave: 'participacao', titulo: 'Part.', x: margem + 305, largura: 40, alinhamento: 'center' },
+                { chave: 'faltas', titulo: 'Faltas', x: margem + 345, largura: 42, alinhamento: 'center' },
+                { chave: 'final', titulo: 'Nota', x: margem + 387, largura: 48, alinhamento: 'center' },
+                { chave: 'status', titulo: 'Status', x: margem + 435, largura: 80, alinhamento: 'center' }
+            ];
+            const larguraTabela = 515;
+            const alturaCabecalho = 24;
+            const alturaLinha = 22;
+            const limiteInferior = altura - 86;
+
+            function desenharCabecalhoTabela(posY) {
+                doc.rect(margem, posY, larguraTabela, alturaCabecalho).fill(PDF_CORES.primaria);
+                colunas.forEach((col) => {
+                    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_CORES.branco)
+                        .text(col.titulo, col.x + 4, posY + 8, { width: col.largura - 8, align: col.alinhamento, lineBreak: false });
+                });
+            }
+
+            function desenharCabecalhoContinuacao() {
+                doc.rect(0, 0, largura, 46).fill(PDF_CORES.primaria);
+                doc.rect(0, 46, largura, 3).fill(PDF_CORES.destaque);
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_CORES.branco)
+                    .text('Colégio Estadual Euclides Feliciano Tardin', margem, 15, { width: conteudo, align: 'center', lineBreak: false });
+                doc.font('Helvetica').fontSize(7.5).fillColor('#cfe0ff')
+                    .text(`Boletim de ${aluno.nome} • Matrícula ${aluno.matricula || '-'}`, margem, 30, { width: conteudo, align: 'center', lineBreak: false });
+            }
+
+            let y = tabelaY + 34;
+            desenharCabecalhoTabela(y);
+            y += alturaCabecalho;
+
+            if (!resumo.lista.length) {
+                doc.rect(margem, y, larguraTabela, 30).fill(PDF_CORES.zebra);
+                doc.font('Helvetica').fontSize(9).fillColor(PDF_CORES.suave)
+                    .text('Nenhuma nota lançada para este aluno.', margem, y + 10, { width: larguraTabela, align: 'center', lineBreak: false });
+                y += 30;
+            }
+
+            resumo.lista.forEach((linha, indice) => {
+                if (y + alturaLinha > limiteInferior) {
+                    doc.addPage();
+                    desenharCabecalhoContinuacao();
+                    y = 70;
+                    desenharCabecalhoTabela(y);
+                    y += alturaCabecalho;
+                }
+
+                if (indice % 2 === 1) {
+                    doc.rect(margem, y, larguraTabela, alturaLinha).fill(PDF_CORES.zebra);
+                }
+                doc.lineWidth(0.4).strokeColor(PDF_CORES.linha)
+                    .moveTo(margem, y + alturaLinha).lineTo(margem + larguraTabela, y + alturaLinha).stroke();
+
+                const aprovado = linha.final >= 5;
+                const valores = {
+                    materia: truncarPdf(linha.materia, 30),
+                    trimestre: `${linha.trimestre}º`,
+                    av1: formatarNotaPdf(linha.av1),
+                    av2: formatarNotaPdf(linha.av2),
+                    trabalhos: formatarNotaPdf(linha.trabalhos),
+                    participacao: formatarNotaPdf(linha.participacao),
+                    faltas: String(linha.faltas),
+                    final: formatarNotaPdf(linha.final),
+                    status: aprovado ? 'APROVADO' : 'REPROVADO'
+                };
+
+                colunas.forEach((col) => {
+                    const destaque = col.chave === 'final' || col.chave === 'status';
+                    let cor = PDF_CORES.texto;
+                    if (col.chave === 'final' || col.chave === 'status') cor = aprovado ? PDF_CORES.sucesso : PDF_CORES.perigo;
+
+                    doc.font(destaque ? 'Helvetica-Bold' : 'Helvetica')
+                        .fontSize(col.chave === 'status' ? 6.8 : 8)
+                        .fillColor(cor)
+                        .text(valores[col.chave], col.x + 4, y + 7, { width: col.largura - 8, align: col.alinhamento, lineBreak: false });
+                });
+
+                y += alturaLinha;
+            });
+
+            // ---- Grafico de desempenho ----
+            const alturaGrafico = 120;
+            const blocoGrafico = 38 + alturaGrafico + 30;
+            if (y + blocoGrafico > limiteInferior) {
+                doc.addPage();
+                desenharCabecalhoContinuacao();
+                y = 70;
+            } else {
+                y += 26;
+            }
+
+            doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_CORES.primaria)
+                .text('Desempenho por matéria', margem, y, { lineBreak: false });
+            doc.font('Helvetica').fontSize(8).fillColor(PDF_CORES.suave)
+                .text('Média das notas finais em cada disciplina', margem, y + 16, { lineBreak: false });
+
+            if (resumo.grafico.length) {
+                desenharGraficoPdf(doc, resumo.grafico, margem, y + 38, conteudo, alturaGrafico);
+            } else {
+                doc.font('Helvetica').fontSize(9).fillColor(PDF_CORES.suave)
+                    .text('Sem dados suficientes para gerar o gráfico.', margem, y + 44, { width: conteudo, align: 'center' });
+            }
+
+            // Legenda do grafico
+            const legendaY = y + 38 + alturaGrafico + 20;
+            doc.circle(margem + 4, legendaY + 4, 3).fill(PDF_CORES.sucesso);
+            doc.font('Helvetica').fontSize(7.5).fillColor(PDF_CORES.suave)
+                .text('Média igual ou acima de 5,0', margem + 12, legendaY, { lineBreak: false });
+            doc.circle(margem + 170, legendaY + 4, 3).fill(PDF_CORES.perigo);
+            doc.font('Helvetica').fontSize(7.5).fillColor(PDF_CORES.suave)
+                .text('Média abaixo de 5,0', margem + 178, legendaY, { lineBreak: false });
+
+            // ---- Rodape e numeracao de paginas ----
+            const rodapeY = altura - 66;
+            doc.lineWidth(0.5).strokeColor(PDF_CORES.linha)
+                .moveTo(margem, rodapeY).lineTo(margem + conteudo, rodapeY).stroke();
+            doc.font('Helvetica').fontSize(7.5).fillColor(PDF_CORES.suave)
+                .text('Documento gerado automaticamente pelo Sistema Acadêmico • Colégio Estadual Euclides Feliciano Tardin',
+                    margem, rodapeY + 10, { width: conteudo * 0.72, align: 'left', lineBreak: false });
+
+            const paginas = doc.bufferedPageRange();
+            for (let i = 0; i < paginas.count; i++) {
+                doc.switchToPage(paginas.start + i);
+                doc.font('Helvetica').fontSize(7.5).fillColor(PDF_CORES.suave)
+                    .text(`Página ${i + 1} de ${paginas.count}`, margem + conteudo * 0.72, rodapeY + 10,
+                        { width: conteudo * 0.28, align: 'right', lineBreak: false });
+            }
 
             doc.end();
         } catch (err) {
